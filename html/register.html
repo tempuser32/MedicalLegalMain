@@ -297,9 +297,12 @@
                 errorMessage.style.display = 'block';
                 errorMessage.style.color = '#333';
                 
+                const API_CONFIG = {
+                    baseUrl: 'https://medicolegal.onrender.com/api'
+                };
+
                 try {
-                    // Try to use the backend API if available
-                    const response = await fetch('http://localhost:3002/api/auth/register', {
+                    const response = await fetch(`${API_CONFIG.baseUrl}/auth/register`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -331,51 +334,10 @@
                         errorMessage.style.color = 'red';
                     }
                 } catch (error) {
-                    console.log('Backend API not available, using localStorage for registration');
-                    
-                    // Fallback to localStorage registration
-                    const users = JSON.parse(localStorage.getItem('users') || '[]');
-                    
-                    // Check if user with same email or ID already exists
-                    if (users.some(u => u.email === email)) {
-                        errorMessage.textContent = 'Email already in use';
-                        errorMessage.style.display = 'block';
-                        errorMessage.style.color = 'red';
-                        return;
-                    }
-                    
-                    if (users.some(u => u.id === id)) {
-                        errorMessage.textContent = 'ID already in use';
-                        errorMessage.style.display = 'block';
-                        errorMessage.style.color = 'red';
-                        return;
-                    }
-                    
-                    // Create new user object
-                    const newUser = {
-                        userType,
-                        id,
-                        password,
-                        name,
-                        email,
-                        phone,
-                        registrationDate: new Date().toISOString(),
-                        isVerified: true
-                    };
-                    
-                    // Add conditional fields
-                    if (userType === 'medical') {
-                        newUser.hospital = hospital;
-                    } else if (userType === 'legal') {
-                        newUser.firmName = firm;
-                    }
-                    
-                    // Add user to array and save
-                    users.push(newUser);
-                    localStorage.setItem('users', JSON.stringify(users));
-                    
-                    alert('Profile created successfully! You can now login.');
-                    window.location.href = 'index.html';
+                    console.error('Registration error:', error);
+                    errorMessage.textContent = 'Failed to process registration. Please try again.';
+                    errorMessage.style.display = 'block';
+                    errorMessage.style.color = 'red';
                 }
             } catch (error) {
                 console.error('Registration error:', error);
