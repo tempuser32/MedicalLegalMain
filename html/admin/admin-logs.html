@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audit Logs - MedLegal</title>
+    <title>User Activity Logs - MedLegal</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -17,36 +17,111 @@
             <li><a href="../dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
             <li><a href="../notifications.html"><i class="fas fa-bell"></i> Notifications <span class="badge">3</span></a></li>
             <li><a href="admin-users.html"><i class="fas fa-users"></i> User Management</a></li>
-            <li><a href="admin-logs.html" class="active"><i class="fas fa-history"></i> Audit Logs</a></li>
-            <li><a href="audit-report.html"><i class="fas fa-file-export"></i> Audit Reports</a></li>
-            <li><a href="record-details.html"><i class="fas fa-file-alt"></i> Record Details</a></li>
-            <li><a href="../settings.html"><i class="fas fa-cog"></i> Settings</a></li>
+            <li><a href="admin-logs.html" class="active"><i class="fas fa-history"></i> User Activity Logs</a></li>
+            <li><a href="admin-settings.html"><i class="fas fa-cog"></i> Settings</a></li>
             <li><a href="../index.html"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </div>
 
     <section class="main-content">
-        <h1>Audit Logs</h1>
+        <h1>User Activity Logs</h1>
         <div class="logs card">
-            <div class="chart-placeholder">📊 Access Trends (JS Chart Here)</div>
+            <div class="filters">
+                <select id="logType">
+                    <option value="all">All Activities</option>
+                    <option value="login">Login Events</option>
+                    <option value="access">Record Access</option>
+                    <option value="modify">Record Modifications</option>
+                    <option value="admin">Administrative Actions</option>
+                </select>
+                <input type="date" id="dateFilter" placeholder="Filter by date">
+                <input type="text" id="userFilter" placeholder="Filter by user">
+                <button class="btn filter"><i class="fas fa-filter"></i> Apply Filters</button>
+            </div>
+            
+            <div class="chart-placeholder">📊 User Activity Trends</div>
+            
             <table role="grid">
                 <thead>
                     <tr>
                         <th>Timestamp</th>
                         <th>User</th>
-                        <th>Action</th>
+                        <th>User Type</th>
+                        <th>Activity</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr tabindex="0">
-                        <td>2025-04-04 10:00</td>
-                        <td>Lawyer XYZ</td>
-                        <td>Accessed MLC-001</td>
+                        <td>2025-04-04 10:00:23</td>
+                        <td>John Smith</td>
+                        <td>Legal</td>
+                        <td>Record Access</td>
+                        <td>Viewed medical record MLC-001</td>
+                        <td>192.168.1.105</td>
+                    </tr>
+                    <tr tabindex="0">
+                        <td>2025-04-04 09:45:12</td>
+                        <td>Sarah Johnson</td>
+                        <td>Medical</td>
+                        <td>Record Upload</td>
+                        <td>Uploaded new medical document for patient P-2345</td>
+                        <td>192.168.1.87</td>
+                    </tr>
+                    <tr tabindex="0">
+                        <td>2025-04-04 09:30:45</td>
+                        <td>Admin User</td>
+                        <td>Admin</td>
+                        <td>User Management</td>
+                        <td>Created new user account for Dr. Williams</td>
+                        <td>192.168.1.10</td>
+                    </tr>
+                    <tr tabindex="0">
+                        <td>2025-04-04 09:15:33</td>
+                        <td>Michael Brown</td>
+                        <td>Patient</td>
+                        <td>Login</td>
+                        <td>Successful login</td>
+                        <td>192.168.1.201</td>
+                    </tr>
+                    <tr tabindex="0">
+                        <td>2025-04-04 08:55:17</td>
+                        <td>Lisa Davis</td>
+                        <td>Legal</td>
+                        <td>Permission Change</td>
+                        <td>Requested access to patient record P-3421</td>
+                        <td>192.168.1.156</td>
                     </tr>
                 </tbody>
             </table>
+            
+            <div class="pagination">
+                <button class="btn page-prev"><i class="fas fa-chevron-left"></i> Previous</button>
+                <span class="page-info">Page 1 of 10</span>
+                <button class="btn page-next">Next <i class="fas fa-chevron-right"></i></button>
+            </div>
+            
             <button class="btn export"><i class="fas fa-download"></i> Export Logs</button>
         </div>
     </section>
+
+    <script>
+        // JavaScript for log filtering and pagination would go here
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize log display
+            console.log('User activity logs loaded');
+            
+            // Filter button event listener
+            document.querySelector('.btn.filter').addEventListener('click', function() {
+                const logType = document.getElementById('logType').value;
+                const dateFilter = document.getElementById('dateFilter').value;
+                const userFilter = document.getElementById('userFilter').value;
+                
+                console.log(`Filtering logs: Type=${logType}, Date=${dateFilter}, User=${userFilter}`);
+                // In a real implementation, this would filter the table data
+            });
+        });
+    </script>
 </body>
 </html>
