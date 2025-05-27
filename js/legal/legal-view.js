@@ -36,9 +36,8 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
     // Get all access requests from localStorage
     const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
     
-    // Filter for approved requests for this legal professional
-    const approvedRequests = accessRequests.filter(request => 
-        request.status === 'approved' && 
+    // Filter for requests for this legal professional
+    const legalRequests = accessRequests.filter(request => 
         (request.legalProfessionalName === legalProfessionalName || 
          request.legalProfessionalEmail === legalProfessionalEmail)
     );
@@ -47,15 +46,15 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
     const tableBody = document.querySelector('tbody');
     tableBody.innerHTML = '';
     
-    if (approvedRequests.length === 0) {
-        // No approved requests
+    if (legalRequests.length === 0) {
+        // No requests
         const noRecordsRow = document.createElement('tr');
         noRecordsRow.innerHTML = `
             <td colspan="4" class="no-records">
                 <div class="empty-state">
                     <i class="fas fa-folder-open"></i>
                     <h3>No Records Available</h3>
-                    <p>You don't have any approved access requests yet. Please submit a request to access patient records.</p>
+                    <p>You don't have any access requests yet. Please submit a request to access patient records.</p>
                     <a href="legal-request.html" class="btn">Request Access</a>
                 </div>
             </td>
@@ -67,14 +66,14 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
     // Get medical records from localStorage
     const medicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
     
-    // For each approved request, find matching medical records
-    approvedRequests.forEach(request => {
+    // For each request, check status and display accordingly
+    legalRequests.forEach(request => {
         // Check if both medical approval and patient consent are required and received
         const requiresPatientConsent = request.requiresPatientConsent !== false;
         const hasPatientConsent = request.patientConsent === true;
         const hasMedicalApproval = request.medicalApproval === true || request.status === 'approved';
         
-        // If patient consent is required but not received, skip this request
+        // If patient consent is required but not received, show pending patient consent
         if (requiresPatientConsent && !hasPatientConsent) {
             // Create a row showing pending patient consent
             const pendingRow = document.createElement('tr');
@@ -99,7 +98,7 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
             return;
         }
         
-        // If medical approval is required but not received, skip this request
+        // If medical approval is required but not received, show pending medical approval
         if (!hasMedicalApproval) {
             // Create a row showing pending medical approval
             const pendingRow = document.createElement('tr');
@@ -124,20 +123,85 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
             return;
         }
         
-        // Find medical records for this patient
-        const patientRecords = medicalRecords.filter(record => 
-            record.patientName === request.patientName
-        );
-        
-        if (patientRecords.length === 0) {
-            // Create a row for the patient even if no records exist yet
-            const patientRow = document.createElement('tr');
-            patientRow.dataset.patientName = request.patientName;
+        // If both patient consent and medical approval are granted, show access approved
+        if (hasPatientConsent && hasMedicalApproval) {
+            // Find medical records for this patient
+            const patientRecords = medicalRecords.filter(record => 
+                record.patientName === request.patientName
+            );
             
-            patientRow.innerHTML = `
+            if (patientRecords.length === 0) {
+                // Create a row for the patient even if no records exist yet
+                const patientRow = document.createElement('tr');
+                patientRow.dataset.patientName = request.patientName;
+                
+                patientRow.innerHTML = `
+                    <td>${request.caseId}</td>
+                    <td>${request.patientName}</td>
+                    <td><span class="status approved">Access Approved</span></td>
+                    <td>
+                        <div class="patient-info">
+                            <p><strong>Patient:</strong> ${request.patientName}</p>
+                            <p><strong>Phone:</strong> ${request.patientPhone}</p>
+                            <p><strong>Hospital:</strong> ${request.hospital}</p>
+                            <p><strong>Case Type:</strong> ${capitalizeFirstLetter(request.caseType.replace('-', ' '))}</p>
+                            <p><strong>Date Range:</strong> ${request.startDate || 'Not specified'} to ${request.endDate || 'Not specified'}</p>
+                            <p class="no-records-message">No medical records uploaded yet for this patient</p>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(patientRow);
+            } else {
+                // Create a row for each medical record
+                patientRecords.forEach((record, index) => {
+                    const recordRow = document.createElement('tr');
+                    recordRow.dataset.patientName = record.patientName;
+                    recordRow.dataset.recordType = record.recordType || 'general';
+                    recordRow.dataset.recordDate = record.recordDate || '';
+                    
+                    recordRow.innerHTML = `
+                        <td>${request.caseId}</td>
+                        <td>${record.patientName}</td>
+                        <td><span class="status approved">Access Approved</span></td>
+                        <td>
+                            <div class="record-card">
+                                <div class="record-header">
+                                    <h3>Medical Record ${index + 1}</h3>
+                                    <span class="record-date">${formatDate(record.recordDate)}</span>
+                                </div>
+                                <div class="record-details">
+                                    <p><strong>Record Type:</strong> ${capitalizeFirstLetter(record.recordType || 'General')}</p>
+                                    <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
+                                    <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
+                                    <p><strong>Upload Date:</strong> ${formatDate(record.uploadDate)}</p>
+                                </div>
+                                <div class="record-content-preview">
+                                    <p><strong>Content:</strong></p>
+                                    <div class="content-preview">${record.content ? truncateText(record.content, 100) : 'No content available'}</div>
+                                </div>
+                                <div class="record-actions">
+                                    <button class="btn view-btn" onclick="viewRecord('${record.id}')">
+                                        <i class="fas fa-eye"></i> View Full Record
+                                    </button>
+                                    <button class="btn download-btn" onclick="downloadRecord('${record.id}')">
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(recordRow);
+                });
+            }
+        } else {
+            // Create a row showing pending status
+            const pendingRow = document.createElement('tr');
+            pendingRow.dataset.patientName = request.patientName;
+            
+            pendingRow.innerHTML = `
                 <td>${request.caseId}</td>
                 <td>${request.patientName}</td>
-                <td><span class="status approved">Approved</span></td>
+                <td><span class="status pending">Pending Approval</span></td>
                 <td>
                     <div class="patient-info">
                         <p><strong>Patient:</strong> ${request.patientName}</p>
@@ -145,52 +209,11 @@ function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
                         <p><strong>Hospital:</strong> ${request.hospital}</p>
                         <p><strong>Case Type:</strong> ${capitalizeFirstLetter(request.caseType.replace('-', ' '))}</p>
                         <p><strong>Date Range:</strong> ${request.startDate || 'Not specified'} to ${request.endDate || 'Not specified'}</p>
-                        <p class="no-records-message">No medical records uploaded yet for this patient</p>
+                        <p class="pending-message">Waiting for approvals. You will be notified when access is granted.</p>
                     </div>
                 </td>
             `;
-            tableBody.appendChild(patientRow);
-        } else {
-            // Create a row for each medical record
-            patientRecords.forEach((record, index) => {
-                const recordRow = document.createElement('tr');
-                recordRow.dataset.patientName = record.patientName;
-                recordRow.dataset.recordType = record.recordType || 'general';
-                recordRow.dataset.recordDate = record.recordDate || '';
-                
-                recordRow.innerHTML = `
-                    <td>${request.caseId}</td>
-                    <td>${record.patientName}</td>
-                    <td><span class="status approved">Approved</span></td>
-                    <td>
-                        <div class="record-card">
-                            <div class="record-header">
-                                <h3>Medical Record ${index + 1}</h3>
-                                <span class="record-date">${formatDate(record.recordDate)}</span>
-                            </div>
-                            <div class="record-details">
-                                <p><strong>Record Type:</strong> ${capitalizeFirstLetter(record.recordType || 'General')}</p>
-                                <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
-                                <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
-                                <p><strong>Upload Date:</strong> ${formatDate(record.uploadDate)}</p>
-                            </div>
-                            <div class="record-content-preview">
-                                <p><strong>Content:</strong></p>
-                                <div class="content-preview">${record.content ? truncateText(record.content, 100) : 'No content available'}</div>
-                            </div>
-                            <div class="record-actions">
-                                <button class="btn view-btn" onclick="viewRecord('${record.id}')">
-                                    <i class="fas fa-eye"></i> View Full Record
-                                </button>
-                                <button class="btn download-btn" onclick="downloadRecord('${record.id}')">
-                                    <i class="fas fa-download"></i> Download
-                                </button>
-                            </div>
-                        </div>
-                    </td>
-                `;
-                tableBody.appendChild(recordRow);
-            });
+            tableBody.appendChild(pendingRow);
         }
     });
 }
