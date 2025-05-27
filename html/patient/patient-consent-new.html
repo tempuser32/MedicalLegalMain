@@ -17,6 +17,8 @@
             display: flex;
             margin-bottom: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            overflow: visible;
         }
         
         .consent-tab {
@@ -25,10 +27,15 @@
             color: rgba(255, 255, 255, 0.7);
             position: relative;
             transition: all 0.3s ease;
+            min-width: 120px;
+            text-align: center;
+            height: auto;
+            display: block;
         }
         
         .consent-tab.active {
             color: #ffffff;
+            font-weight: bold;
         }
         
         .consent-tab.active::after {
@@ -39,6 +46,7 @@
             width: 100%;
             height: 2px;
             background: #4f46e5;
+            display: block;
         }
         
         .consent-tab-content {
@@ -310,6 +318,23 @@
     </main>
 
     <script>
+        // Force display of tabs
+        window.onload = function() {
+            // Make sure tabs are visible
+            const tabs = document.querySelectorAll('.consent-tab');
+            tabs.forEach(tab => {
+                tab.style.display = 'block';
+                tab.style.minWidth = '120px';
+                tab.style.height = 'auto';
+            });
+            
+            // Make sure tab content is visible
+            const activeTab = document.querySelector('.consent-tab-content.active');
+            if (activeTab) {
+                activeTab.style.display = 'block';
+            }
+        };
+        
         // Hard-coded sample data for demonstration
         const sampleRecords = [
             {
@@ -370,9 +395,16 @@
         function initTabs() {
             const tabs = document.querySelectorAll('.consent-tab');
             tabs.forEach(tab => {
+                // Ensure tab is visible
+                tab.style.display = 'block';
+                tab.style.minWidth = '120px';
+                tab.style.height = 'auto';
+                
                 tab.addEventListener('click', function() {
                     // Remove active class from all tabs
-                    tabs.forEach(t => t.classList.remove('active'));
+                    tabs.forEach(t => {
+                        t.classList.remove('active');
+                    });
                     
                     // Add active class to clicked tab
                     this.classList.add('active');
@@ -380,13 +412,22 @@
                     // Hide all tab contents
                     document.querySelectorAll('.consent-tab-content').forEach(content => {
                         content.classList.remove('active');
+                        content.style.display = 'none';
                     });
                     
                     // Show the selected tab content
                     const tabId = this.getAttribute('data-tab');
-                    document.getElementById(`${tabId}-consents`).classList.add('active');
+                    const selectedContent = document.getElementById(`${tabId}-consents`);
+                    selectedContent.classList.add('active');
+                    selectedContent.style.display = 'block';
                 });
             });
+            
+            // Ensure active tab content is visible
+            const activeTabContent = document.querySelector('.consent-tab-content.active');
+            if (activeTabContent) {
+                activeTabContent.style.display = 'block';
+            }
         }
 
         function displayConsents() {
