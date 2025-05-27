@@ -11,9 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get current patient name
     const patientName = localStorage.getItem('userName');
     
-    // Generate sample records if none exist
-    generateSampleRecords();
-    
     // Load records
     loadRecords();
     
@@ -39,79 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchTerm = this.value.toLowerCase();
         searchRecords(searchTerm);
     });
-    
-    // Add to recent activities
-    addActivity({
-        id: `ACT-${Date.now()}`,
-        type: 'record',
-        title: 'Records Viewed',
-        description: 'You viewed your medical records',
-        timestamp: new Date().toISOString(),
-        patientName: patientName
-    });
 });
-
-function generateSampleRecords() {
-    // Check if records already exist
-    const existingRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
-    if (existingRecords.length > 0) return;
-    
-    const patientName = localStorage.getItem('userName') || 'Patient';
-    const patientEmail = localStorage.getItem('userEmail') || 'patient@example.com';
-    
-    const sampleRecords = [
-        {
-            id: 'REC-001',
-            patientName: patientName,
-            patientEmail: patientEmail,
-            recordType: 'medical',
-            recordDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-            doctor: 'Dr. Sarah Johnson',
-            hospital: 'City Medical Center',
-            content: 'Annual physical examination. Blood pressure: 120/80. Heart rate: 72 bpm. All vitals normal.',
-            diagnosis: 'Healthy, no significant findings',
-            treatment: 'No treatment required',
-            notes: 'Patient should continue regular exercise and balanced diet',
-            fileUrl: '/backend/uploads/medical/0a9c0331-bf72-4d9c-a813-5f4b4bcdaf30.pdf',
-            fileName: 'annual_physical_report.pdf',
-            uploadedBy: 'Dr. Sarah Johnson'
-        },
-        {
-            id: 'REC-002',
-            patientName: patientName,
-            patientEmail: patientEmail,
-            recordType: 'lab',
-            recordDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
-            doctor: 'Dr. Michael Chen',
-            hospital: 'City Medical Center',
-            content: 'Complete blood count (CBC) results. White blood cell count: 7.5. Red blood cell count: 4.8. All values within normal range.',
-            diagnosis: 'Normal blood work',
-            treatment: 'No treatment required',
-            notes: 'Follow-up in 6 months for routine check',
-            fileUrl: '/backend/uploads/medical/17672433-5c0c-46c3-8b7d-eb9297caccdf.pdf',
-            fileName: 'blood_work_results.pdf',
-            uploadedBy: 'Lab Technician John Davis'
-        },
-        {
-            id: 'REC-003',
-            patientName: patientName,
-            patientEmail: patientEmail,
-            recordType: 'prescription',
-            recordDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-            doctor: 'Dr. Sarah Johnson',
-            hospital: 'City Medical Center',
-            content: 'Prescription for seasonal allergies. Loratadine 10mg, once daily for 30 days.',
-            diagnosis: 'Seasonal allergic rhinitis',
-            treatment: 'Loratadine 10mg daily',
-            notes: 'Avoid known allergens. Return if symptoms worsen.',
-            fileUrl: '/backend/uploads/medical/a52f48d4-4490-4cf9-9629-7ec854943582.pdf',
-            fileName: 'allergy_prescription.pdf',
-            uploadedBy: 'Dr. Sarah Johnson'
-        }
-    ];
-    
-    localStorage.setItem('medicalRecords', JSON.stringify(sampleRecords));
-}
 
 function loadRecords() {
     const recordsList = document.getElementById('records-list');
@@ -175,7 +100,7 @@ function createRecordCard(record) {
         <div class="record-details">
             <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
             <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
-            <p>${record.content || 'No description available'}</p>
+            <p><strong>Diagnosis:</strong> ${record.diagnosis || 'Not specified'}</p>
         </div>
         <div class="record-actions">
             <button class="record-btn view-btn" onclick="viewRecord('${record.id}')">
@@ -275,27 +200,81 @@ function viewRecord(recordId) {
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
         modalContent.style.backgroundColor = '#1e293b';
-        modalContent.style.margin = '10% auto';
+        modalContent.style.margin = '5% auto';
         modalContent.style.padding = '20px';
         modalContent.style.border = '1px solid rgba(148, 163, 184, 0.2)';
         modalContent.style.borderRadius = '15px';
         modalContent.style.width = '70%';
         modalContent.style.color = 'white';
+        modalContent.style.maxHeight = '80vh';
+        modalContent.style.overflowY = 'auto';
+        
+        // Build HTML content based on available fields
+        let detailsHTML = `
+            <p><strong>Record ID:</strong> ${record.id}</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
+            <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
+        `;
+        
+        // Add patient details if available
+        if (record.patientId || record.dateOfBirth || record.gender || record.contactNumber) {
+            detailsHTML += `
+                <h3 style="margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Patient Information</h3>
+                ${record.patientId ? `<p><strong>Patient ID:</strong> ${record.patientId}</p>` : ''}
+                ${record.dateOfBirth ? `<p><strong>Date of Birth:</strong> ${record.dateOfBirth}</p>` : ''}
+                ${record.gender ? `<p><strong>Gender:</strong> ${capitalizeFirstLetter(record.gender)}</p>` : ''}
+                ${record.contactNumber ? `<p><strong>Contact:</strong> ${record.contactNumber}</p>` : ''}
+                ${record.address ? `<p><strong>Address:</strong> ${record.address}</p>` : ''}
+            `;
+        }
+        
+        // Add medical details if available
+        detailsHTML += `
+            <h3 style="margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Medical Information</h3>
+            ${record.diagnosis ? `<p><strong>Diagnosis:</strong> ${record.diagnosis}</p>` : ''}
+            ${record.treatmentProvided ? `<p><strong>Treatment:</strong> ${record.treatmentProvided}</p>` : ''}
+            ${record.caseType ? `<p><strong>Case Type:</strong> ${record.caseType}</p>` : ''}
+            ${record.caseNumber ? `<p><strong>Case Number:</strong> ${record.caseNumber}</p>` : ''}
+            ${record.caseDescription ? `<p><strong>Case Description:</strong> ${record.caseDescription}</p>` : ''}
+            ${record.content ? `<p><strong>Additional Notes:</strong> ${record.content}</p>` : ''}
+        `;
+        
+        // Add dates if available
+        if (record.admissionDate || record.dischargeDate || record.incidentDate) {
+            detailsHTML += `
+                <h3 style="margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Important Dates</h3>
+                ${record.admissionDate ? `<p><strong>Admission Date:</strong> ${record.admissionDate}</p>` : ''}
+                ${record.dischargeDate ? `<p><strong>Discharge Date:</strong> ${record.dischargeDate}</p>` : ''}
+                ${record.incidentDate ? `<p><strong>Incident Date:</strong> ${record.incidentDate}</p>` : ''}
+            `;
+        }
+        
+        // Add file information
+        detailsHTML += `
+            <h3 style="margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">File Information</h3>
+            <p><strong>File Name:</strong> ${record.fileName || 'No file attached'}</p>
+            <p><strong>Uploaded By:</strong> ${record.uploadedBy || 'Unknown'}</p>
+            <p><strong>Upload Date:</strong> ${new Date(record.uploadDate).toLocaleString()}</p>
+        `;
+        
+        // Add PDF preview if available
+        let pdfPreviewHTML = '';
+        if (record.fileData && record.fileData.startsWith('data:application/pdf')) {
+            pdfPreviewHTML = `
+                <h3 style="margin-top: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">Document Preview</h3>
+                <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; text-align: center;">
+                    <iframe src="${record.fileData}" width="100%" height="500px" style="border: none;"></iframe>
+                </div>
+            `;
+        }
         
         modalContent.innerHTML = `
             <span class="close" style="color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
             <h2>${capitalizeFirstLetter(record.recordType || 'Medical')} Record Details</h2>
             <div style="margin-top: 20px;">
-                <p><strong>Record ID:</strong> ${record.id}</p>
-                <p><strong>Date:</strong> ${formattedDate}</p>
-                <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
-                <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
-                <p><strong>Diagnosis:</strong> ${record.diagnosis || 'Not specified'}</p>
-                <p><strong>Treatment:</strong> ${record.treatment || 'Not specified'}</p>
-                <p><strong>Notes:</strong> ${record.notes || 'None'}</p>
-                <p><strong>Description:</strong> ${record.content || 'No description available'}</p>
-                <p><strong>File:</strong> ${record.fileName || 'No file attached'}</p>
-                <p><strong>Uploaded by:</strong> ${record.uploadedBy || 'Unknown'}</p>
+                ${detailsHTML}
+                ${pdfPreviewHTML}
             </div>
             <div style="margin-top: 20px; text-align: right;">
                 <button id="download-btn" style="padding: 8px 16px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
@@ -327,16 +306,6 @@ function viewRecord(recordId) {
                 downloadRecord(recordId);
             });
         }
-        
-        // Add to recent activities
-        addActivity({
-            id: `ACT-${Date.now()}`,
-            type: 'record',
-            title: 'Record Viewed',
-            description: `You viewed a ${record.recordType || 'medical'} record`,
-            timestamp: new Date().toISOString(),
-            patientName: localStorage.getItem('userName')
-        });
     } else {
         alert('Record not found');
     }
@@ -349,100 +318,54 @@ function downloadRecord(recordId) {
     // Find the specific record
     const record = allMedicalRecords.find(r => r.id === recordId);
     
-    if (record && record.fileUrl) {
-        // In a real app, this would download the actual file from the server
-        // For this demo, we'll simulate downloading the file
-        
-        // Check if the file exists in the backend folder
-        fetch(record.fileUrl)
-            .then(response => {
-                if (response.ok) {
-                    // File exists, download it
-                    const a = document.createElement('a');
-                    a.href = record.fileUrl;
-                    a.download = record.fileName || `${record.recordType}_record.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    // Add to recent activities
-                    addActivity({
-                        id: `ACT-${Date.now()}`,
-                        type: 'record',
-                        title: 'Record Downloaded',
-                        description: `You downloaded a ${record.recordType || 'medical'} record`,
-                        timestamp: new Date().toISOString(),
-                        patientName: localStorage.getItem('userName')
-                    });
-                } else {
-                    // File doesn't exist, create a sample PDF
-                    createAndDownloadSampleFile(record);
-                }
-            })
-            .catch(error => {
-                // Error fetching file, create a sample PDF
-                createAndDownloadSampleFile(record);
-            });
+    if (record) {
+        if (record.fileData && record.fileData.startsWith('data:')) {
+            // Create a download link for the base64 data
+            const a = document.createElement('a');
+            a.href = record.fileData;
+            a.download = record.fileName || `${record.recordType || 'medical'}_record.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            // Create a text file with record details as fallback
+            const recordDetails = `
+Medical Record: ${record.id}
+Patient: ${record.patientName}
+Patient ID: ${record.patientId || 'N/A'}
+Date: ${new Date(record.recordDate || record.uploadDate).toLocaleDateString()}
+Doctor: ${record.doctor || 'Not specified'}
+Hospital: ${record.hospital || 'Not specified'}
+Diagnosis: ${record.diagnosis || 'Not specified'}
+Treatment: ${record.treatmentProvided || 'Not specified'}
+Case Type: ${record.caseType || 'Not specified'}
+Case Description: ${record.caseDescription || 'Not specified'}
+            `;
+            
+            // Create a Blob with the content
+            const blob = new Blob([recordDetails], { type: 'text/plain' });
+            
+            // Create a download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = record.fileName || `${record.recordType || 'medical'}_record_${record.id}.txt`;
+            
+            // Append to body, click and remove
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Release the object URL
+            URL.revokeObjectURL(url);
+        }
     } else {
-        alert('No file available for download');
+        alert('Record not found');
     }
 }
 
-function createAndDownloadSampleFile(record) {
-    // Create a sample PDF content
-    const pdfContent = `
-        Medical Record: ${record.id}
-        Patient: ${record.patientName}
-        Date: ${new Date(record.recordDate || record.uploadDate).toLocaleDateString()}
-        Doctor: ${record.doctor || 'Not specified'}
-        Hospital: ${record.hospital || 'Not specified'}
-        Diagnosis: ${record.diagnosis || 'Not specified'}
-        Treatment: ${record.treatment || 'Not specified'}
-        Notes: ${record.notes || 'None'}
-        
-        ${record.content || 'No description available'}
-    `;
-    
-    // Create a Blob with the content
-    const blob = new Blob([pdfContent], { type: 'text/plain' });
-    
-    // Create a download link
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = record.fileName || `${record.recordType || 'medical'}_record_${record.id}.txt`;
-    
-    // Append to body, click and remove
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    // Release the object URL
-    URL.revokeObjectURL(url);
-    
-    // Add to recent activities
-    addActivity({
-        id: `ACT-${Date.now()}`,
-        type: 'record',
-        title: 'Record Downloaded',
-        description: `You downloaded a ${record.recordType || 'medical'} record`,
-        timestamp: new Date().toISOString(),
-        patientName: localStorage.getItem('userName')
-    });
-}
-
-function addActivity(activity) {
-    const activities = JSON.parse(localStorage.getItem('patientActivities') || '[]');
-    activities.unshift(activity);
-    
-    // Keep only the 10 most recent activities
-    const recentActivities = activities.slice(0, 10);
-    
-    // Save back to localStorage
-    localStorage.setItem('patientActivities', JSON.stringify(recentActivities));
-}
-
 function capitalizeFirstLetter(string) {
+    if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
