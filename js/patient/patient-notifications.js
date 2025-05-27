@@ -275,8 +275,17 @@ function handleRequestAction(requestId, action) {
     const requestIndex = accessRequests.findIndex(r => r.id === requestId);
     
     if (requestIndex !== -1) {
-        accessRequests[requestIndex].status = action;
-        accessRequests[requestIndex].updatedAt = new Date().toISOString();
+        // Update patient consent status
+        accessRequests[requestIndex].patientConsent = action === 'approved' ? true : false;
+        accessRequests[requestIndex].patientConsentDate = new Date().toISOString();
+        
+        // If medical approval is also granted, update the overall status
+        if (action === 'approved' && accessRequests[requestIndex].medicalApproval === true) {
+            accessRequests[requestIndex].status = 'approved';
+        } else if (action === 'rejected') {
+            accessRequests[requestIndex].status = 'rejected';
+        }
+        
         localStorage.setItem('accessRequests', JSON.stringify(accessRequests));
         
         // Create notification for legal professional
