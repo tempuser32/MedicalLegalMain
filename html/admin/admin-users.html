@@ -63,6 +63,30 @@
             font-weight: bold;
             cursor: pointer;
         }
+
+        .filter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-container select, .filter-container input {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .pending-count {
+            background-color: #f59e0b;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -73,7 +97,8 @@
         <ul>
             <li><a href="../dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
             <li><a href="../notifications.html"><i class="fas fa-bell"></i> Notifications <span class="badge">3</span></a></li>
-            <li><a href="admin-users.html" class="active"><i class="fas fa-users"></i> Manage Users</a></li>
+            <li><a href="admin-users.html" class="active"><i class="fas fa-users"></i> Manage Users <span class="pending-count" id="pending-count">0</span></a></li>
+            <li><a href="admin-logs.html"><i class="fas fa-history"></i> Access Logs</a></li>
             <li><a href="../settings.html"><i class="fas fa-cog"></i> Settings</a></li>
             <li><a href="../index.html"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
@@ -82,15 +107,35 @@
     <section class="main-content">
         <h1>Manage Users</h1>
         
-        <input type="text" id="user-search" placeholder="Search users..." style="padding: 8px; margin-bottom: 20px; width: 100%; border-radius: 5px; border: 1px solid #ccc;">
+        <div class="filter-container">
+            <select id="status-filter">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending Approval</option>
+                <option value="active">Active</option>
+                <option value="rejected">Rejected</option>
+                <option value="locked">Locked</option>
+            </select>
+            
+            <select id="role-filter">
+                <option value="all">All Roles</option>
+                <option value="medical">Medical Staff</option>
+                <option value="legal">Legal Professional</option>
+                <option value="patient">Patient</option>
+                <option value="admin">Admin</option>
+            </select>
+            
+            <input type="text" id="user-search" placeholder="Search users...">
+        </div>
         
         <div class="users card">
             <table role="grid">
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Name</th>
                         <th>Role</th>
                         <th>Status</th>
+                        <th>Registration Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -110,9 +155,13 @@
             const searchInput = document.getElementById('user-search');
             if (searchInput) {
                 searchInput.addEventListener('input', function() {
-                    filterUsers(this.value);
+                    filterUsers();
                 });
             }
+
+            // Add event listeners for filters
+            document.getElementById('status-filter').addEventListener('change', filterUsers);
+            document.getElementById('role-filter').addEventListener('change', filterUsers);
         });
 
         function loadUsers() {
@@ -128,32 +177,44 @@
             
             if (users.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="4">No users found</td>';
+                row.innerHTML = '<td colspan="6">No users found</td>';
                 tableBody.appendChild(row);
                 return;
             }
             
-            // Sort users: admins first, then by user type
+            // Sort users: pending first, then by user type
             users.sort((a, b) => {
-                // Sort by user type (admin first)
+                // Sort by approval status (pending first)
+                if ((a.approvalStatus === 'pending' || a.approved === false) && 
+                    (b.approvalStatus !== 'pending' && b.approved !== false)) return -1;
+                if ((a.approvalStatus !== 'pending' && a.approved !== false) && 
+                    (b.approvalStatus === 'pending' || b.approved === false)) return 1;
+                
+                // Then by user type (admin first)
                 if (a.userType === 'admin' && b.userType !== 'admin') return -1;
                 if (a.userType !== 'admin' && b.userType === 'admin') return 1;
                 
-                // Then by super admin status
-                if (a.isSuperAdmin && !b.isSuperAdmin) return -1;
-                if (!a.isSuperAdmin && b.isSuperAdmin) return 1;
-                
-                // Then by name
-                return (a.name || '').localeCompare(b.name || '');
+                // Then by registration date (newest first)
+                return new Date(b.registrationDate || 0) - new Date(a.registrationDate || 0);
             });
+            
+            // Count pending approvals
+            const pendingCount = users.filter(user => 
+                user.approvalStatus === 'pending' || 
+                (user.approved === false && user.approvalStatus !== 'rejected')
+            ).length;
+            
+            // Update pending count badge
+            document.getElementById('pending-count').textContent = pendingCount;
             
             // Add users to the table
             users.forEach(user => {
                 const row = document.createElement('tr');
                 row.setAttribute('data-user-id', user.id);
-                row.setAttribute('data-user-type', user.userType);
+                row.setAttribute('data-user-type', user.userType || '');
                 row.setAttribute('data-user-name', user.name || '');
                 row.setAttribute('data-user-email', user.email || '');
+                row.setAttribute('data-user-status', user.approvalStatus || (user.approved ? 'active' : 'pending'));
                 
                 // Determine status
                 let statusClass = 'pending';
@@ -177,17 +238,36 @@
                 let userTypeDisplay = user.userType || 'Unknown';
                 if (user.userType === 'admin' && user.isSuperAdmin) {
                     userTypeDisplay = 'Super Admin';
+                } else if (user.userType === 'medical') {
+                    userTypeDisplay = 'Medical Staff';
+                } else if (user.userType === 'legal') {
+                    userTypeDisplay = 'Legal Professional';
+                } else if (user.userType === 'patient') {
+                    userTypeDisplay = 'Patient';
+                } else if (user.userType === 'admin') {
+                    userTypeDisplay = 'Admin';
                 }
+                
+                // Format registration date
+                const registrationDate = user.registrationDate ? 
+                    new Date(user.registrationDate).toLocaleDateString() : 'Unknown';
                 
                 row.innerHTML = `
                     <td>${user.id}</td>
+                    <td>${user.name || 'Unknown'}</td>
                     <td>${userTypeDisplay}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>${registrationDate}</td>
                     <td>
                         <button class="btn-small view" data-user-id="${user.id}"><i class="fas fa-eye"></i> View</button>
-                        ${statusClass === 'active' ? 
-                            `<button class="btn-small deactivate" data-user-id="${user.id}"><i class="fas fa-user-slash"></i> Deactivate</button>` : 
-                            `<button class="btn-small activate" data-user-id="${user.id}"><i class="fas fa-user-check"></i> Activate</button>`
+                        ${statusClass === 'pending' ? 
+                            `<button class="btn-small approve" data-user-id="${user.id}"><i class="fas fa-check"></i> Approve</button>
+                             <button class="btn-small reject" data-user-id="${user.id}"><i class="fas fa-times"></i> Reject</button>` : 
+                            statusClass === 'active' ? 
+                                `<button class="btn-small deactivate" data-user-id="${user.id}"><i class="fas fa-user-slash"></i> Deactivate</button>` : 
+                                statusClass === 'rejected' ?
+                                    `<button class="btn-small approve" data-user-id="${user.id}"><i class="fas fa-user-check"></i> Approve</button>` :
+                                    `<button class="btn-small unlock" data-user-id="${user.id}"><i class="fas fa-unlock"></i> Unlock</button>`
                         }
                     </td>
                 `;
@@ -208,11 +288,19 @@
                 });
             });
             
-            // Activate button
-            document.querySelectorAll('.btn-small.activate').forEach(button => {
+            // Approve button
+            document.querySelectorAll('.btn-small.approve').forEach(button => {
                 button.addEventListener('click', function() {
                     const userId = this.getAttribute('data-user-id');
-                    toggleUserStatus(userId, true);
+                    approveUser(userId);
+                });
+            });
+            
+            // Reject button
+            document.querySelectorAll('.btn-small.reject').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    rejectUser(userId);
                 });
             });
             
@@ -220,25 +308,40 @@
             document.querySelectorAll('.btn-small.deactivate').forEach(button => {
                 button.addEventListener('click', function() {
                     const userId = this.getAttribute('data-user-id');
-                    toggleUserStatus(userId, false);
+                    deactivateUser(userId);
+                });
+            });
+            
+            // Unlock button
+            document.querySelectorAll('.btn-small.unlock').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    unlockUser(userId);
                 });
             });
         }
 
-        function filterUsers(searchTerm) {
-            searchTerm = searchTerm.toLowerCase();
+        function filterUsers() {
+            const searchTerm = document.getElementById('user-search').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const roleFilter = document.getElementById('role-filter').value;
+            
             const rows = document.querySelectorAll('#users-table-body tr');
             
             rows.forEach(row => {
                 const userId = row.getAttribute('data-user-id') || '';
                 const userName = row.getAttribute('data-user-name') || '';
                 const userType = row.getAttribute('data-user-type') || '';
-                const userEmail = row.getAttribute('data-user-email') || '';
+                const userStatus = row.getAttribute('data-user-status') || '';
                 
-                if (userId.toLowerCase().includes(searchTerm) || 
-                    userName.toLowerCase().includes(searchTerm) || 
-                    userType.toLowerCase().includes(searchTerm) ||
-                    userEmail.toLowerCase().includes(searchTerm)) {
+                // Check if row matches all filters
+                const matchesSearch = userId.toLowerCase().includes(searchTerm) || 
+                                     userName.toLowerCase().includes(searchTerm);
+                                     
+                const matchesStatus = statusFilter === 'all' || userStatus === statusFilter;
+                const matchesRole = roleFilter === 'all' || userType === roleFilter;
+                
+                if (matchesSearch && matchesStatus && matchesRole) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -261,7 +364,8 @@
             modal.style.display = 'block';
             
             // Format date
-            const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleString() : 'Unknown';
+            const registrationDate = user.registrationDate ? 
+                new Date(user.registrationDate).toLocaleString() : 'Unknown';
             
             // Create modal content
             const modalContent = document.createElement('div');
@@ -281,6 +385,8 @@
                     <p><strong>Failed Login Attempts:</strong> ${user.failedAttempts || 0}</p>
                     <p><strong>Account Locked:</strong> ${user.accountLocked ? 'Yes' : 'No'}</p>
                     ${user.lockTime ? `<p><strong>Locked Since:</strong> ${new Date(user.lockTime).toLocaleString()}</p>` : ''}
+                    ${user.hospital ? `<p><strong>Hospital:</strong> ${user.hospital}</p>` : ''}
+                    ${user.firmName ? `<p><strong>Law Firm:</strong> ${user.firmName}</p>` : ''}
                 </div>
                 <div style="margin-top: 20px; text-align: right;">
                     <button id="unlock-account-btn" style="padding: 8px 16px; background-color: #4f46e5; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; display: ${user.accountLocked ? 'inline-block' : 'none'}">Unlock Account</button>
@@ -308,19 +414,8 @@
             const unlockBtn = modal.querySelector('#unlock-account-btn');
             if (unlockBtn) {
                 unlockBtn.addEventListener('click', () => {
-                    const users = JSON.parse(localStorage.getItem('users') || '[]');
-                    const userIndex = users.findIndex(u => u.id === userId);
-                    
-                    if (userIndex !== -1) {
-                        users[userIndex].accountLocked = false;
-                        users[userIndex].failedAttempts = 0;
-                        delete users[userIndex].lockTime;
-                        
-                        localStorage.setItem('users', JSON.stringify(users));
-                        alert(`Account for ${user.name} has been unlocked.`);
-                        document.body.removeChild(modal);
-                        loadUsers();
-                    }
+                    unlockUser(userId);
+                    document.body.removeChild(modal);
                 });
             }
             
@@ -348,16 +443,59 @@
             }
         }
 
-        function toggleUserStatus(userId, activate) {
+        function approveUser(userId) {
             const users = JSON.parse(localStorage.getItem('users') || '[]');
             const userIndex = users.findIndex(u => u.id === userId);
             
             if (userIndex !== -1) {
-                users[userIndex].approvalStatus = activate ? 'approved' : 'rejected';
-                users[userIndex].approved = activate;
+                users[userIndex].approvalStatus = 'approved';
+                users[userIndex].approved = true;
                 
                 localStorage.setItem('users', JSON.stringify(users));
-                alert(`User ${activate ? 'activated' : 'deactivated'} successfully!`);
+                alert(`User ${users[userIndex].name || userId} has been approved.`);
+                loadUsers();
+            }
+        }
+
+        function rejectUser(userId) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const userIndex = users.findIndex(u => u.id === userId);
+            
+            if (userIndex !== -1) {
+                users[userIndex].approvalStatus = 'rejected';
+                users[userIndex].approved = false;
+                
+                localStorage.setItem('users', JSON.stringify(users));
+                alert(`User ${users[userIndex].name || userId} has been rejected.`);
+                loadUsers();
+            }
+        }
+
+        function deactivateUser(userId) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const userIndex = users.findIndex(u => u.id === userId);
+            
+            if (userIndex !== -1) {
+                users[userIndex].approvalStatus = 'rejected';
+                users[userIndex].approved = false;
+                
+                localStorage.setItem('users', JSON.stringify(users));
+                alert(`User ${users[userIndex].name || userId} has been deactivated.`);
+                loadUsers();
+            }
+        }
+
+        function unlockUser(userId) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const userIndex = users.findIndex(u => u.id === userId);
+            
+            if (userIndex !== -1) {
+                users[userIndex].accountLocked = false;
+                users[userIndex].failedAttempts = 0;
+                delete users[userIndex].lockTime;
+                
+                localStorage.setItem('users', JSON.stringify(users));
+                alert(`Account for ${users[userIndex].name || userId} has been unlocked.`);
                 loadUsers();
             }
         }

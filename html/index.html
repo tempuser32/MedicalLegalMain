@@ -144,6 +144,14 @@
                             }
                         }
                         
+                        // Check if user is approved
+                        if (user.approvalStatus === 'pending' || user.approved === false) {
+                            errorMessage.textContent = 'Your account is pending approval by an administrator. Please check back later.';
+                            errorMessage.style.display = 'block';
+                            errorMessage.style.color = 'red';
+                            return;
+                        }
+                        
                         // Check password
                         console.log('Checking password');
                         if (user.password === password) {
