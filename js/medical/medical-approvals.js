@@ -457,7 +457,9 @@ function viewDocument(requestId, docType) {
                     const link = document.createElement('a');
                     link.href = "${fileData}";
                     link.download = "${fileName}";
+                    document.body.appendChild(link);
                     link.click();
+                    document.body.removeChild(link);
                 }
             </script>
         </body>
@@ -506,15 +508,22 @@ function downloadDocument(requestId, docType) {
         return;
     }
     
-    // Create a temporary link element
-    const a = document.createElement('a');
-    a.href = fileData;
-    a.download = fileName;
-    
-    // Append to the document, click it, and remove it
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+        // Create a temporary link element
+        const a = document.createElement('a');
+        a.href = fileData;
+        a.download = fileName;
+        
+        // Append to the document, click it, and remove it
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        console.log('Document download initiated successfully');
+    } catch (error) {
+        console.error('Error downloading document:', error);
+        alert('Error downloading document. Please try again.');
+    }
 }
 
 function approveRequest(requestId, closeModal = false) {
@@ -652,3 +661,10 @@ function rejectRequest(requestId, closeModal = false) {
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+// Make functions globally available
+window.viewRequest = viewRequest;
+window.viewDocument = viewDocument;
+window.downloadDocument = downloadDocument;
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;

@@ -30,6 +30,14 @@ document.addEventListener('DOMContentLoaded', function() {
     dateFilter.addEventListener('change', function() {
         filterRecordsByDate(this.value);
     });
+    
+    // Listen for notifications that might indicate status changes
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'accessRequests' || e.key === 'medicalRecords') {
+            // Reload the page data when access requests or medical records change
+            loadApprovedRequests(legalProfessionalName, legalProfessionalEmail);
+        }
+    });
 });
 
 function loadApprovedRequests(legalProfessionalName, legalProfessionalEmail) {
@@ -303,36 +311,48 @@ function downloadRecord(recordId) {
         return;
     }
     
-    if (record.fileData) {
-        // If there's a file attached, download it
-        const link = document.createElement('a');
-        link.href = record.fileData;
-        link.download = `${record.patientName}_medical_record_${recordId}.pdf`;
-        link.click();
-    } else {
-        // Otherwise, create a text file with the record details
-        const recordText = `
-            Patient Name: ${record.patientName}
-            Record Type: ${capitalizeFirstLetter(record.recordType || 'General')}
-            Record Date: ${formatDate(record.recordDate)}
-            Hospital: ${record.hospital || 'Not specified'}
-            Doctor: ${record.doctor || 'Not specified'}
+    try {
+        if (record.fileData && record.fileData.startsWith('data:')) {
+            // If there's a file attached, download it
+            const link = document.createElement('a');
+            link.href = record.fileData;
+            link.download = record.fileName || `${record.patientName}_medical_record_${recordId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             
-            Record Content:
-            ${record.content || 'No content available'}
-        `;
-        
-        const blob = new Blob([recordText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${record.patientName}_medical_record_${recordId}.txt`;
-        link.click();
-        URL.revokeObjectURL(url);
+            // Log this access for audit purposes
+            logAccess(recordId, 'download');
+        } else {
+            // Otherwise, create a text file with the record details
+            const recordText = `
+Patient Name: ${record.patientName}
+Record Type: ${capitalizeFirstLetter(record.recordType || 'General')}
+Record Date: ${formatDate(record.recordDate)}
+Hospital: ${record.hospital || 'Not specified'}
+Doctor: ${record.doctor || 'Not specified'}
+
+Record Content:
+${record.content || 'No content available'}
+            `;
+            
+            const blob = new Blob([recordText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${record.patientName}_medical_record_${recordId}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Log this access for audit purposes
+            logAccess(recordId, 'download');
+        }
+    } catch (error) {
+        console.error('Error downloading record:', error);
+        alert('Error downloading the record. Please try again.');
     }
-    
-    // Log this access for audit purposes
-    logAccess(recordId, 'download');
 }
 
 function printRecord(recordId) {

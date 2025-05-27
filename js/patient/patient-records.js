@@ -91,6 +91,29 @@ function createRecordCard(record) {
     // Determine record type
     const recordType = record.recordType || 'medical';
     
+    // Check if there are any pending access requests for this record
+    const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+    const pendingRequests = accessRequests.filter(req => 
+        req.patientName === record.patientName && 
+        req.patientConsent !== true && 
+        req.patientConsent !== false
+    );
+    
+    // Add approve/reject buttons if there are pending requests
+    let consentButtonsHTML = '';
+    if (pendingRequests.length > 0) {
+        consentButtonsHTML = `
+            <div class="record-actions" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <button class="record-btn approve-btn" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);" onclick="approveAllRequests('${record.patientName}')">
+                    <i class="fas fa-check"></i> Approve All Requests
+                </button>
+                <button class="record-btn revoke-btn" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="rejectAllRequests('${record.patientName}')">
+                    <i class="fas fa-times"></i> Reject All
+                </button>
+            </div>
+        `;
+    }
+    
     recordCard.innerHTML = `
         <div class="record-header">
             <h3 class="record-title">${capitalizeFirstLetter(recordType)} Record</h3>
@@ -110,6 +133,7 @@ function createRecordCard(record) {
                 <i class="fas fa-download"></i> Download
             </button>
         </div>
+        ${consentButtonsHTML}
     `;
     
     return recordCard;
@@ -196,6 +220,33 @@ function viewRecord(recordId) {
             day: 'numeric'
         });
         
+        // Check if there are any pending access requests for this record
+        const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+        const pendingRequests = accessRequests.filter(req => 
+            req.patientName === record.patientName && 
+            req.patientConsent !== true && 
+            req.patientConsent !== false
+        );
+        
+        // Add approve/reject buttons if there are pending requests
+        let consentButtonsHTML = '';
+        if (pendingRequests.length > 0) {
+            consentButtonsHTML = `
+                <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                    <h3>Pending Access Requests</h3>
+                    <p>There are ${pendingRequests.length} pending access requests for your medical records.</p>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button id="approve-all-btn" style="padding: 8px 16px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            <i class="fas fa-check"></i> Approve All Requests
+                        </button>
+                        <button id="reject-all-btn" style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Reject All Requests
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
         // Create modal content
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
@@ -275,6 +326,7 @@ function viewRecord(recordId) {
             <div style="margin-top: 20px;">
                 ${detailsHTML}
                 ${pdfPreviewHTML}
+                ${consentButtonsHTML}
             </div>
             <div style="margin-top: 20px; text-align: right;">
                 <button id="download-btn" style="padding: 8px 16px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
@@ -304,6 +356,23 @@ function viewRecord(recordId) {
         if (downloadBtn) {
             downloadBtn.addEventListener('click', () => {
                 downloadRecord(recordId);
+            });
+        }
+        
+        // Add approve/reject all functionality
+        const approveAllBtn = modal.querySelector('#approve-all-btn');
+        if (approveAllBtn) {
+            approveAllBtn.addEventListener('click', () => {
+                approveAllRequests(record.patientName);
+                document.body.removeChild(modal);
+            });
+        }
+        
+        const rejectAllBtn = modal.querySelector('#reject-all-btn');
+        if (rejectAllBtn) {
+            rejectAllBtn.addEventListener('click', () => {
+                rejectAllRequests(record.patientName);
+                document.body.removeChild(modal);
             });
         }
     } else {
@@ -364,6 +433,85 @@ Case Description: ${record.caseDescription || 'Not specified'}
     }
 }
 
+function approveAllRequests(patientName) {
+    // Get all access requests
+    const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+    
+    // Find all pending requests for this patient
+    const pendingRequests = accessRequests.filter(req => 
+        req.patientName === patientName && 
+        req.patientConsent !== true && 
+        req.patientConsent !== false
+    );
+    
+    if (pendingRequests.length === 0) {
+        alert('No pending requests found');
+        return;
+    }
+    
+    // Update all pending requests
+    let updatedCount = 0;
+    accessRequests.forEach((request, index) => {
+        if (request.patientName === patientName && request.patientConsent !== true && request.patientConsent !== false) {
+            accessRequests[index].patientConsent = true;
+            accessRequests[index].patientConsentDate = new Date().toISOString();
+            
+            // If medical approval is also granted, update the overall status
+            if (accessRequests[index].medicalApproval === true) {
+                accessRequests[index].status = 'approved';
+            }
+            
+            updatedCount++;
+        }
+    });
+    
+    // Save back to localStorage
+    localStorage.setItem('accessRequests', JSON.stringify(accessRequests));
+    
+    // Reload records to update UI
+    loadRecords();
+    
+    // Show success message
+    alert(`${updatedCount} access requests approved successfully`);
+}
+
+function rejectAllRequests(patientName) {
+    // Get all access requests
+    const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+    
+    // Find all pending requests for this patient
+    const pendingRequests = accessRequests.filter(req => 
+        req.patientName === patientName && 
+        req.patientConsent !== true && 
+        req.patientConsent !== false
+    );
+    
+    if (pendingRequests.length === 0) {
+        alert('No pending requests found');
+        return;
+    }
+    
+    // Update all pending requests
+    let updatedCount = 0;
+    accessRequests.forEach((request, index) => {
+        if (request.patientName === patientName && request.patientConsent !== true && request.patientConsent !== false) {
+            accessRequests[index].patientConsent = false;
+            accessRequests[index].patientConsentDate = new Date().toISOString();
+            accessRequests[index].status = 'rejected';
+            updatedCount++;
+        }
+    });
+    
+    // Save back to localStorage
+    localStorage.setItem('accessRequests', JSON.stringify(accessRequests));
+    
+    // Reload records to update UI
+    loadRecords();
+    
+    // Show success message
+    alert(`${updatedCount} access requests rejected successfully`);
+}
+
 function capitalizeFirstLetter(string) {
     if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -372,3 +520,5 @@ function capitalizeFirstLetter(string) {
 // Make functions available globally
 window.viewRecord = viewRecord;
 window.downloadRecord = downloadRecord;
+window.approveAllRequests = approveAllRequests;
+window.rejectAllRequests = rejectAllRequests;
