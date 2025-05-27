@@ -69,7 +69,12 @@ function generateSampleRecords() {
             doctor: 'Dr. Sarah Johnson',
             hospital: 'City Medical Center',
             content: 'Annual physical examination. Blood pressure: 120/80. Heart rate: 72 bpm. All vitals normal.',
-            fileUrl: '/uploads/medical/sample-medical-report.pdf'
+            diagnosis: 'Healthy, no significant findings',
+            treatment: 'No treatment required',
+            notes: 'Patient should continue regular exercise and balanced diet',
+            fileUrl: '/backend/uploads/medical/0a9c0331-bf72-4d9c-a813-5f4b4bcdaf30.pdf',
+            fileName: 'annual_physical_report.pdf',
+            uploadedBy: 'Dr. Sarah Johnson'
         },
         {
             id: 'REC-002',
@@ -80,7 +85,12 @@ function generateSampleRecords() {
             doctor: 'Dr. Michael Chen',
             hospital: 'City Medical Center',
             content: 'Complete blood count (CBC) results. White blood cell count: 7.5. Red blood cell count: 4.8. All values within normal range.',
-            fileUrl: '/uploads/medical/sample-lab-results.pdf'
+            diagnosis: 'Normal blood work',
+            treatment: 'No treatment required',
+            notes: 'Follow-up in 6 months for routine check',
+            fileUrl: '/backend/uploads/medical/17672433-5c0c-46c3-8b7d-eb9297caccdf.pdf',
+            fileName: 'blood_work_results.pdf',
+            uploadedBy: 'Lab Technician John Davis'
         },
         {
             id: 'REC-003',
@@ -91,7 +101,12 @@ function generateSampleRecords() {
             doctor: 'Dr. Sarah Johnson',
             hospital: 'City Medical Center',
             content: 'Prescription for seasonal allergies. Loratadine 10mg, once daily for 30 days.',
-            fileUrl: '/uploads/medical/sample-prescription.pdf'
+            diagnosis: 'Seasonal allergic rhinitis',
+            treatment: 'Loratadine 10mg daily',
+            notes: 'Avoid known allergens. Return if symptoms worsen.',
+            fileUrl: '/backend/uploads/medical/a52f48d4-4490-4cf9-9629-7ec854943582.pdf',
+            fileName: 'allergy_prescription.pdf',
+            uploadedBy: 'Dr. Sarah Johnson'
         }
     ];
     
@@ -235,8 +250,83 @@ function viewRecord(recordId) {
     const record = allMedicalRecords.find(r => r.id === recordId);
     
     if (record) {
-        // In a real app, this would open a detailed view of the record
-        alert(`Viewing record: ${record.recordType || 'Medical'} Record from ${record.hospital || 'Unknown Hospital'}`);
+        // Create modal for detailed view
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.style.position = 'fixed';
+        modal.style.zIndex = '1000';
+        modal.style.left = '0';
+        modal.style.top = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.overflow = 'auto';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        
+        // Format date
+        const date = new Date(record.recordDate || record.uploadDate || new Date());
+        const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.backgroundColor = '#1e293b';
+        modalContent.style.margin = '10% auto';
+        modalContent.style.padding = '20px';
+        modalContent.style.border = '1px solid rgba(148, 163, 184, 0.2)';
+        modalContent.style.borderRadius = '15px';
+        modalContent.style.width = '70%';
+        modalContent.style.color = 'white';
+        
+        modalContent.innerHTML = `
+            <span class="close" style="color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h2>${capitalizeFirstLetter(record.recordType || 'Medical')} Record Details</h2>
+            <div style="margin-top: 20px;">
+                <p><strong>Record ID:</strong> ${record.id}</p>
+                <p><strong>Date:</strong> ${formattedDate}</p>
+                <p><strong>Doctor:</strong> ${record.doctor || 'Not specified'}</p>
+                <p><strong>Hospital:</strong> ${record.hospital || 'Not specified'}</p>
+                <p><strong>Diagnosis:</strong> ${record.diagnosis || 'Not specified'}</p>
+                <p><strong>Treatment:</strong> ${record.treatment || 'Not specified'}</p>
+                <p><strong>Notes:</strong> ${record.notes || 'None'}</p>
+                <p><strong>Description:</strong> ${record.content || 'No description available'}</p>
+                <p><strong>File:</strong> ${record.fileName || 'No file attached'}</p>
+                <p><strong>Uploaded by:</strong> ${record.uploadedBy || 'Unknown'}</p>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="download-btn" style="padding: 8px 16px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    <i class="fas fa-download"></i> Download File
+                </button>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Close modal when clicking on X
+        const closeBtn = modal.querySelector('.close');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+        
+        // Add download functionality
+        const downloadBtn = modal.querySelector('#download-btn');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                downloadRecord(recordId);
+            });
+        }
         
         // Add to recent activities
         addActivity({
@@ -259,47 +349,86 @@ function downloadRecord(recordId) {
     // Find the specific record
     const record = allMedicalRecords.find(r => r.id === recordId);
     
-    if (record) {
-        // Create a sample PDF content
-        const pdfContent = `
-            Medical Record: ${record.id}
-            Patient: ${record.patientName}
-            Date: ${new Date(record.recordDate || record.uploadDate).toLocaleDateString()}
-            Doctor: ${record.doctor || 'Not specified'}
-            Hospital: ${record.hospital || 'Not specified'}
-            
-            ${record.content || 'No description available'}
-        `;
+    if (record && record.fileUrl) {
+        // In a real app, this would download the actual file from the server
+        // For this demo, we'll simulate downloading the file
         
-        // Create a Blob with the content
-        const blob = new Blob([pdfContent], { type: 'text/plain' });
-        
-        // Create a download link
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${record.recordType || 'medical'}_record_${record.id}.txt`;
-        
-        // Append to body, click and remove
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Release the object URL
-        URL.revokeObjectURL(url);
-        
-        // Add to recent activities
-        addActivity({
-            id: `ACT-${Date.now()}`,
-            type: 'record',
-            title: 'Record Downloaded',
-            description: `You downloaded a ${record.recordType || 'medical'} record`,
-            timestamp: new Date().toISOString(),
-            patientName: localStorage.getItem('userName')
-        });
+        // Check if the file exists in the backend folder
+        fetch(record.fileUrl)
+            .then(response => {
+                if (response.ok) {
+                    // File exists, download it
+                    const a = document.createElement('a');
+                    a.href = record.fileUrl;
+                    a.download = record.fileName || `${record.recordType}_record.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    // Add to recent activities
+                    addActivity({
+                        id: `ACT-${Date.now()}`,
+                        type: 'record',
+                        title: 'Record Downloaded',
+                        description: `You downloaded a ${record.recordType || 'medical'} record`,
+                        timestamp: new Date().toISOString(),
+                        patientName: localStorage.getItem('userName')
+                    });
+                } else {
+                    // File doesn't exist, create a sample PDF
+                    createAndDownloadSampleFile(record);
+                }
+            })
+            .catch(error => {
+                // Error fetching file, create a sample PDF
+                createAndDownloadSampleFile(record);
+            });
     } else {
-        alert('Record not found');
+        alert('No file available for download');
     }
+}
+
+function createAndDownloadSampleFile(record) {
+    // Create a sample PDF content
+    const pdfContent = `
+        Medical Record: ${record.id}
+        Patient: ${record.patientName}
+        Date: ${new Date(record.recordDate || record.uploadDate).toLocaleDateString()}
+        Doctor: ${record.doctor || 'Not specified'}
+        Hospital: ${record.hospital || 'Not specified'}
+        Diagnosis: ${record.diagnosis || 'Not specified'}
+        Treatment: ${record.treatment || 'Not specified'}
+        Notes: ${record.notes || 'None'}
+        
+        ${record.content || 'No description available'}
+    `;
+    
+    // Create a Blob with the content
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = record.fileName || `${record.recordType || 'medical'}_record_${record.id}.txt`;
+    
+    // Append to body, click and remove
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Release the object URL
+    URL.revokeObjectURL(url);
+    
+    // Add to recent activities
+    addActivity({
+        id: `ACT-${Date.now()}`,
+        type: 'record',
+        title: 'Record Downloaded',
+        description: `You downloaded a ${record.recordType || 'medical'} record`,
+        timestamp: new Date().toISOString(),
+        patientName: localStorage.getItem('userName')
+    });
 }
 
 function addActivity(activity) {
