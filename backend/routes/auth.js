@@ -3,7 +3,6 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 
 // Middleware to verify token
 const verifyToken = (req, res, next) => {
@@ -50,75 +49,6 @@ const verifySuperAdmin = (req, res, next) => {
         return res.status(500).json({ message: 'Server error' });
     }
 };
-
-// Registration route
-router.post('/register', async (req, res) => {
-    try {
-        const { userType, name, email, phone, password, specialization, hospitalName, department, experience, qualifications } = req.body;
-
-        // Validate required fields
-        if (!userType || !name || !email || !phone || !password) {
-            return res.status(400).json({ message: 'All fields are required' });
-        }
-
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-
-        // Generate unique ID
-        const id = crypto.randomBytes(16).toString('hex');
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create new user
-        const newUser = new User({
-            id,
-            userType,
-            name,
-            email,
-            phone,
-            password: hashedPassword,
-            specialization,
-            hospitalName,
-            department,
-            experience,
-            qualifications,
-            approvalStatus: 'pending',
-            failedAttempts: 0,
-            accountLocked: false
-        });
-
-        // Save user to MongoDB
-        await newUser.save();
-
-        // Create token
-        const token = jwt.sign(
-            { id: newUser.id, userType: newUser.userType },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        // Return success response without password
-        res.status(201).json({
-            message: 'Registration successful',
-            token,
-            user: {
-                id: newUser.id,
-                name: newUser.name,
-                email: newUser.email,
-                phone: newUser.phone,
-                userType: newUser.userType,
-                approvalStatus: newUser.approvalStatus
-            }
-        });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
 
 // Profile route
 router.get('/profile', verifyToken, async (req, res) => {
