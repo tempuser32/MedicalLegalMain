@@ -44,7 +44,7 @@
         
         .dashboard-stats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -238,7 +238,6 @@
             <ul>
                 <li><a href="patient-dashboard.html" class="active"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
                 <li><a href="patient/patient-records.html"><i class="fas fa-file-medical"></i> <span>My Records</span></a></li>
-                <li><a href="patient/patient-consent-new.html"><i class="fas fa-clipboard-check"></i> <span>Consent Management</span></a></li>
                 <li><a href="patient/patient-notifications.html"><i class="fas fa-bell"></i> <span>Notifications</span></a></li>
                 <li><a href="patient/patient-settings.html"><i class="fas fa-cog"></i> <span>Settings</span></a></li>
                 <li><a href="index.html"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
@@ -264,11 +263,6 @@
                 <i class="fas fa-file-medical"></i>
                 <h3>Medical Records</h3>
                 <p class="stat-number" id="records-count">0</p>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-clipboard-check"></i>
-                <h3>Active Consents</h3>
-                <p class="stat-number" id="consents-count">0</p>
             </div>
             <div class="stat-card">
                 <i class="fas fa-bell"></i>
@@ -302,10 +296,6 @@
                         <i class="fas fa-file-medical"></i>
                         <span>View My Records</span>
                     </button>
-                    <button onclick="window.location.href='patient/patient-consent-new.html'" class="quick-action-btn">
-                        <i class="fas fa-clipboard-check"></i>
-                        <span>Manage Consents</span>
-                    </button>
                     <button onclick="window.location.href='patient-profile.html'" class="quick-action-btn">
                         <i class="fas fa-user-edit"></i>
                         <span>Edit Profile</span>
@@ -331,13 +321,9 @@
             if (!localStorage.getItem('patientRecords')) {
                 localStorage.setItem('patientRecords', '0');
             }
-            if (!localStorage.getItem('activeConsents')) {
-                localStorage.setItem('activeConsents', '0');
-            }
             
             // Update stats display
             document.getElementById('records-count').textContent = localStorage.getItem('patientRecords');
-            document.getElementById('consents-count').textContent = localStorage.getItem('activeConsents');
             
             // Check for notifications
             const notifications = JSON.parse(localStorage.getItem('patientNotifications') || '[]');
@@ -397,8 +383,6 @@
             let iconClass = 'fa-bell';
             if (activity.type === 'login') {
                 iconClass = 'fa-sign-in-alt';
-            } else if (activity.type === 'consent') {
-                iconClass = 'fa-clipboard-check';
             } else if (activity.type === 'record') {
                 iconClass = 'fa-file-medical';
             }
