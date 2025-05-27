@@ -8,6 +8,81 @@
     <link rel="stylesheet" href="/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .user-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .user-info h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .user-info p {
+            margin: 5px 0;
+            color: #cbd5e1;
+        }
+        
+        .user-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .approve-btn, .reject-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+        
+        .approve-btn {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .reject-btn {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .approve-btn:hover {
+            background-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .reject-btn:hover {
+            background-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+        }
+        
+        .pending-count {
+            background-color: #f59e0b;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -21,7 +96,10 @@
                     <a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                 </li>
                 <li>
-                    <a href="admin-users.html"><i class="fas fa-users"></i> Manage Users</a>
+                    <a href="admin-notifications.html"><i class="fas fa-bell"></i> Notifications <span class="badge">3</span></a>
+                </li>
+                <li>
+                    <a href="admin-users.html"><i class="fas fa-users"></i> Manage Users <span class="pending-count" id="pending-count">0</span></a>
                 </li>
                 <li>
                     <a href="admin-logs.html"><i class="fas fa-clipboard-list"></i> System Logs</a>

@@ -3,427 +3,177 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Check if token exists
         const token = localStorage.getItem('token');
         if (!token) {
-            window.location.href = 'index.html';
+            window.location.href = '../index.html';
             return;
         }
 
-        const API_CONFIG = {
-            baseUrl: 'https://medicolegal.onrender.com/api',
-            auth: {
-                profile: '/auth/profile'
-            },
-            admin: {
-                pendingUsers: '/admin/pending-users',
-                statistics: '/admin/statistics'
-            }
-        };
-        
-        // Get admin's profile
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.auth.profile}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch profile');
+        // Display admin name
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+            document.getElementById('admin-name').textContent = userName;
         }
-        
-        const profile = await response.json();
-        
-        // Check if user is admin
-        if (profile.userType !== 'admin') {
-            window.location.href = 'index.html';
-            return;
-        }
-        
-        // If user is superadmin, redirect to superadmin dashboard
-        if (profile.isSuperAdmin) {
-            window.location.href = 'superadmin-dashboard.html';
-            return;
-        }
-        
-        document.getElementById('admin-name').textContent = profile.name;
 
-        // Fetch pending users
-        fetchPendingUsers();
-        
-        // Fetch statistics
-        fetchStatistics();
-        
-        // Set up navigation
-        setupNavigation();
-        
+        // Load user statistics and pending users
+        loadUserStatistics();
+        loadPendingUsers();
+
         // Set up event listeners
-        setupEventListeners();
-
+        document.getElementById('refresh-pending').addEventListener('click', loadPendingUsers);
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        showNotification('Error loading dashboard data', 'error');
     }
 });
 
-// Fetch pending users
-async function fetchPendingUsers() {
+function loadUserStatistics() {
     try {
-        const token = localStorage.getItem('token');
-        const pendingResponse = await fetch('http://localhost:3002/api/auth/admin/dashboard', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Get users from localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
         
-        if (!pendingResponse.ok) {
-            throw new Error('Failed to fetch pending users');
-        }
+        // Calculate statistics
+        const totalUsers = users.length;
+        const pendingUsers = users.filter(user => 
+            user.approvalStatus === 'pending' || 
+            (user.approved === false && user.approvalStatus !== 'rejected')
+        ).length;
+        const approvedUsers = users.filter(user => 
+            user.approvalStatus === 'approved' || 
+            user.approved === true
+        ).length;
         
-        const data = await pendingResponse.json();
-        populatePendingUsers(data.pendingUsers);
-    } catch (error) {
-        console.error('Error fetching pending users:', error);
-        document.getElementById('pending-users-list').innerHTML = 
-            '<p class="error">Failed to load pending users. Please try again.</p>';
-    }
-}
-
-// Fetch all statistics
-async function fetchStatistics() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3002/api/auth/admin/users', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch users');
-        }
-        
-        const users = await response.json();
-        
-        // Update statistics
-        document.getElementById('total-users').textContent = users.length;
-        
-        const pendingUsers = users.filter(user => user.approvalStatus === 'pending').length;
+        // Update the UI
+        document.getElementById('total-users').textContent = totalUsers;
         document.getElementById('pending-users').textContent = pendingUsers;
-        
-        const approvedUsers = users.filter(user => user.approvalStatus === 'approved').length;
         document.getElementById('approved-users').textContent = approvedUsers;
         
-    } catch (error) {
-        console.error('Error fetching statistics:', error);
-        document.getElementById('total-users').textContent = 'Error';
-        document.getElementById('pending-users').textContent = 'Error';
-        document.getElementById('approved-users').textContent = 'Error';
-    }
-}
-
-// Populate pending users
-function populatePendingUsers(users) {
-    const listContainer = document.getElementById('pending-users-list');
-    listContainer.innerHTML = '';
-
-    if (!users || users.length === 0) {
-        listContainer.innerHTML = '<p class="no-users">No pending users to approve</p>';
-        return;
-    }
-
-    users.forEach(user => {
-        const userCard = createPendingUserCard(user);
-        listContainer.appendChild(userCard);
-    });
-}
-
-// Create pending user card
-function createPendingUserCard(user) {
-    const card = document.createElement('div');
-    card.className = 'pending-user-card';
-    
-    card.innerHTML = `
-        <div class="user-info">
-            <h3>${user.name}</h3>
-            <p><strong>ID:</strong> ${user.id}</p>
-            <p><strong>Email:</strong> ${user.email}</p>
-            <p><strong>User Type:</strong> ${user.userType}</p>
-            <p><strong>Phone:</strong> ${user.phone}</p>
-        </div>
-        <div class="action-buttons">
-            <button class="approve-btn" data-user-id="${user._id}">
-                <i class="fas fa-check"></i> Approve
-            </button>
-            <button class="reject-btn" data-user-id="${user._id}">
-                <i class="fas fa-times"></i> Reject
-            </button>
-        </div>
-    `;
-
-    return card;
-}
-
-// Handle approval or rejection
-async function handleApproval(userId, approve) {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:3002/api/auth/admin/${approve ? 'approve' : 'reject'}/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showNotification(`User ${approve ? 'approved' : 'rejected'} successfully`, 'success');
-            // Refresh the pending users and statistics
-            fetchPendingUsers();
-            fetchStatistics();
-        } else {
-            showNotification(result.message || 'Error processing request', 'error');
+        // Update pending count in sidebar if it exists
+        const pendingCountElement = document.querySelector('.pending-count');
+        if (pendingCountElement) {
+            pendingCountElement.textContent = pendingUsers;
         }
     } catch (error) {
-        console.error('Error handling approval:', error);
-        showNotification('Error processing request', 'error');
+        console.error('Error loading user statistics:', error);
     }
 }
 
-// Set up navigation
-function setupNavigation() {
-    const manageUsersLink = document.getElementById('manage-users-link');
-    const reportsLink = document.getElementById('reports-link');
-    const profileLink = document.getElementById('profile-link');
-    const logoutLink = document.getElementById('logout-link');
-    
-    // Dashboard sections
-    const pendingUsersSection = document.getElementById('pending-users-section');
-    const manageUsersSection = document.getElementById('manage-users-section');
-    const reportsSection = document.getElementById('reports-section');
-    const profileSection = document.getElementById('profile-section');
-    
-    // Hide all sections except pending users
-    manageUsersSection.classList.add('hidden');
-    reportsSection.classList.add('hidden');
-    profileSection.classList.add('hidden');
-    
-    // Manage users link
-    manageUsersLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.add('hidden');
-        manageUsersSection.classList.remove('hidden');
-        reportsSection.classList.add('hidden');
-        profileSection.classList.add('hidden');
-        
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        manageUsersLink.parentElement.classList.add('active');
-        
-        // Load all users
-        loadAllUsers();
-    });
-    
-    // Reports link
-    reportsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.add('hidden');
-        manageUsersSection.classList.add('hidden');
-        reportsSection.classList.remove('hidden');
-        profileSection.classList.add('hidden');
-        
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        reportsLink.parentElement.classList.add('active');
-    });
-    
-    // Profile link
-    profileLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.add('hidden');
-        manageUsersSection.classList.add('hidden');
-        reportsSection.classList.add('hidden');
-        profileSection.classList.remove('hidden');
-        
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        profileLink.parentElement.classList.add('active');
-        
-        // Load profile data
-        loadProfileData();
-    });
-    
-    // Logout link
-    logoutLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('token');
-        localStorage.removeItem('userType');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userEmail');
-        window.location.href = 'index.html';
-    });
-}
-
-// Load all users
-async function loadAllUsers() {
+function loadPendingUsers() {
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3002/api/auth/admin/users', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Get users from localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
         
-        if (!response.ok) {
-            throw new Error('Failed to fetch users');
-        }
+        // Filter pending users
+        const pendingUsers = users.filter(user => 
+            user.approvalStatus === 'pending' || 
+            (user.approved === false && user.approvalStatus !== 'rejected')
+        );
         
-        const users = await response.json();
+        // Get the container
+        const pendingUsersContainer = document.getElementById('pending-users-list');
+        pendingUsersContainer.innerHTML = '';
         
-        const usersList = document.getElementById('users-list');
-        usersList.innerHTML = '';
-        
-        if (users.length === 0) {
-            usersList.innerHTML = '<p class="no-users">No users found</p>';
+        if (pendingUsers.length === 0) {
+            pendingUsersContainer.innerHTML = '<p class="no-data">No pending users found</p>';
             return;
         }
         
-        // Create a table for users
-        const table = document.createElement('table');
-        table.className = 'users-table';
-        
-        // Create table header
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-            <tr>
-                <th>Name</th>
-                <th>ID</th>
-                <th>Email</th>
-                <th>User Type</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        `;
-        table.appendChild(thead);
-        
-        // Create table body
-        const tbody = document.createElement('tbody');
-        
-        users.forEach(user => {
-            const tr = document.createElement('tr');
+        // Create a card for each pending user
+        pendingUsers.forEach(user => {
+            const userCard = document.createElement('div');
+            userCard.className = 'user-card';
             
-            tr.innerHTML = `
-                <td>${user.name}</td>
-                <td>${user.id}</td>
-                <td>${user.email}</td>
-                <td>${user.userType}</td>
-                <td>
-                    <span class="status-badge ${user.approvalStatus}">
-                        ${user.approvalStatus}
-                    </span>
-                </td>
-                <td>
-                    <button class="view-btn" data-user-id="${user._id}">
-                        <i class="fas fa-eye"></i>
+            // Format registration date
+            const registrationDate = user.registrationDate ? 
+                new Date(user.registrationDate).toLocaleDateString() : 'Unknown';
+            
+            userCard.innerHTML = `
+                <div class="user-info">
+                    <h3>${user.name || 'Unknown'}</h3>
+                    <p><strong>ID:</strong> ${user.id}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>User Type:</strong> ${user.userType}</p>
+                    <p><strong>Registered:</strong> ${registrationDate}</p>
+                </div>
+                <div class="user-actions">
+                    <button class="approve-btn" data-user-id="${user.id}">
+                        <i class="fas fa-check"></i> Approve
                     </button>
-                    ${user.approvalStatus === 'pending' ? `
-                    <button class="approve-btn" data-user-id="${user._id}">
-                        <i class="fas fa-check"></i>
+                    <button class="reject-btn" data-user-id="${user.id}">
+                        <i class="fas fa-times"></i> Reject
                     </button>
-                    <button class="reject-btn" data-user-id="${user._id}">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    ` : ''}
-                </td>
+                </div>
             `;
             
-            tbody.appendChild(tr);
+            pendingUsersContainer.appendChild(userCard);
         });
         
-        table.appendChild(tbody);
-        usersList.appendChild(table);
+        // Add event listeners to buttons
+        document.querySelectorAll('.approve-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                approveUser(this.getAttribute('data-user-id'));
+            });
+        });
         
+        document.querySelectorAll('.reject-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                rejectUser(this.getAttribute('data-user-id'));
+            });
+        });
     } catch (error) {
-        console.error('Error loading users:', error);
-        document.getElementById('users-list').innerHTML = 
-            '<p class="error">Failed to load users. Please try again.</p>';
+        console.error('Error loading pending users:', error);
     }
 }
 
-// Load profile data
-async function loadProfileData() {
+function approveUser(userId) {
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3002/api/auth/profile', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Get users from localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
         
-        if (!response.ok) {
-            throw new Error('Failed to fetch profile');
+        // Find the user
+        const userIndex = users.findIndex(u => u.id === userId);
+        
+        if (userIndex !== -1) {
+            // Update user status
+            users[userIndex].approvalStatus = 'approved';
+            users[userIndex].approved = true;
+            
+            // Save back to localStorage
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Show success message
+            alert(`User ${users[userIndex].name || userId} has been approved.`);
+            
+            // Refresh the dashboard
+            loadUserStatistics();
+            loadPendingUsers();
         }
-        
-        const profile = await response.json();
-        
-        document.getElementById('profile-name').value = profile.name;
-        document.getElementById('profile-email').value = profile.email;
-        document.getElementById('profile-phone').value = profile.phone;
-        
     } catch (error) {
-        console.error('Error loading profile:', error);
-        showNotification('Error loading profile data', 'error');
+        console.error('Error approving user:', error);
     }
 }
 
-// Set up event listeners
-function setupEventListeners() {
-    // Refresh pending users button
-    document.getElementById('refresh-pending').addEventListener('click', () => {
-        fetchPendingUsers();
-    });
-    
-    // Update profile button
-    document.getElementById('update-profile').addEventListener('click', async () => {
-        const currentPassword = document.getElementById('current-password').value;
-        const newPassword = document.getElementById('new-password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        const phone = document.getElementById('profile-phone').value;
+function rejectUser(userId) {
+    try {
+        // Get users from localStorage
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
         
-        // Validate passwords
-        if (newPassword && newPassword !== confirmPassword) {
-            showNotification('New passwords do not match', 'error');
-            return;
-        }
+        // Find the user
+        const userIndex = users.findIndex(u => u.id === userId);
         
-        // Here you would typically update the profile on the server
-        showNotification('Profile updated successfully', 'success');
-    });
-    
-    // Search button
-    document.getElementById('search-btn').addEventListener('click', () => {
-        const searchTerm = document.getElementById('user-search').value;
-        // Here you would typically filter users based on the search term
-        showNotification('Search functionality will be implemented soon', 'info');
-    });
-    
-    // Event delegation for approve/reject buttons
-    document.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('approve-btn')) {
-            await handleApproval(e.target.dataset.userId, true);
-        } else if (e.target.classList.contains('reject-btn')) {
-            await handleApproval(e.target.dataset.userId, false);
+        if (userIndex !== -1) {
+            // Update user status
+            users[userIndex].approvalStatus = 'rejected';
+            users[userIndex].approved = false;
+            
+            // Save back to localStorage
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Show success message
+            alert(`User ${users[userIndex].name || userId} has been rejected.`);
+            
+            // Refresh the dashboard
+            loadUserStatistics();
+            loadPendingUsers();
         }
-    });
-}
-
-// Show notification
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
+    } catch (error) {
+        console.error('Error rejecting user:', error);
+    }
 }
