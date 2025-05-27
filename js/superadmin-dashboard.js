@@ -1,400 +1,297 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // Check if token exists
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        // Get admin's profile
-        const response = await fetch('http://localhost:3002/api/auth/profile', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch profile');
-        }
-        
-        const profile = await response.json();
-        
-        // Check if user is superadmin
-        if (!profile.isSuperAdmin) {
-            window.location.href = 'admin-dashboard.html';
-            return;
-        }
-        
-        document.getElementById('admin-name').textContent = profile.name;
-
-        // Fetch pending users
-        fetchPendingUsers();
-        
-        // Fetch statistics
-        fetchStatistics();
-        
-        // Set up navigation
-        setupNavigation();
-        
-        // Set up event listeners
-        setupEventListeners();
-
-    } catch (error) {
-        console.error('Error loading dashboard:', error);
-        showNotification('Error loading dashboard data', 'error');
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Load registered users
+    loadRegisteredUsers();
+    
+    // Load recent document requests
+    loadRecentDocumentRequests();
+    
+    // Load audit logs
+    loadAuditLogs();
+    
+    // Remove reports and analytics section
+    removeReportsAndAnalytics();
+    
+    // Remove manage hospitals section
+    removeManageHospitals();
 });
 
-// Fetch pending users
-async function fetchPendingUsers() {
-    try {
-        const token = localStorage.getItem('token');
-        const pendingResponse = await fetch('http://localhost:3002/api/auth/admin/dashboard', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!pendingResponse.ok) {
-            throw new Error('Failed to fetch pending users');
-        }
-        
-        const data = await pendingResponse.json();
-        populatePendingUsers(data.pendingUsers);
-    } catch (error) {
-        console.error('Error fetching pending users:', error);
-        document.getElementById('pending-users-list').innerHTML = 
-            '<p class="error">Failed to load pending users. Please try again.</p>';
-    }
-}
-
-// Fetch all statistics
-async function fetchStatistics() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3002/api/auth/admin/users', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch users');
-        }
-        
-        const users = await response.json();
-        
-        // Update statistics
-        document.getElementById('total-users').textContent = users.length;
-        
-        const pendingUsers = users.filter(user => user.approvalStatus === 'pending').length;
-        document.getElementById('pending-users').textContent = pendingUsers;
-        
-        const approvedUsers = users.filter(user => user.approvalStatus === 'approved').length;
-        document.getElementById('approved-users').textContent = approvedUsers;
-        
-        const adminUsers = users.filter(user => user.userType === 'admin').length;
-        document.getElementById('admin-users').textContent = adminUsers;
-        
-    } catch (error) {
-        console.error('Error fetching statistics:', error);
-        document.getElementById('total-users').textContent = 'Error';
-        document.getElementById('pending-users').textContent = 'Error';
-        document.getElementById('approved-users').textContent = 'Error';
-        document.getElementById('admin-users').textContent = 'Error';
-    }
-}
-
-// Populate pending users
-function populatePendingUsers(users) {
-    const listContainer = document.getElementById('pending-users-list');
-    listContainer.innerHTML = '';
-
-    if (!users || users.length === 0) {
-        listContainer.innerHTML = '<p class="no-users">No pending users to approve</p>';
+function loadRegisteredUsers() {
+    // Get users from localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    
+    // Sort users by registration date (newest first)
+    users.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB - dateA;
+    });
+    
+    // Get the recent users table body
+    const userTableBody = document.querySelector('.admin-section:nth-child(3) .admin-table tbody');
+    if (!userTableBody) return;
+    
+    // Clear existing rows
+    userTableBody.innerHTML = '';
+    
+    // Take only the first 5 users
+    const recentUsers = users.slice(0, 5);
+    
+    // Update total users count
+    document.querySelector('.stat-card:nth-child(1) .stat-value').textContent = users.length;
+    
+    if (recentUsers.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6">No registered users found</td>';
+        userTableBody.appendChild(row);
         return;
     }
-
-    users.forEach(user => {
-        const userCard = createPendingUserCard(user);
-        listContainer.appendChild(userCard);
-    });
-}
-
-// Create pending user card
-function createPendingUserCard(user) {
-    const card = document.createElement('div');
-    card.className = 'pending-user-card';
     
-    card.innerHTML = `
-        <div class="user-info">
-            <h3>${user.name}</h3>
-            <p><strong>ID:</strong> ${user.id}</p>
-            <p><strong>Email:</strong> ${user.email}</p>
-            <p><strong>User Type:</strong> ${user.userType}</p>
-            <p><strong>Phone:</strong> ${user.phone}</p>
-            <p><strong>Registered:</strong> ${new Date(user.createdAt).toLocaleString()}</p>
-        </div>
-        <div class="action-buttons">
-            <button class="approve-btn" data-user-id="${user._id}">
-                <i class="fas fa-check"></i> Approve
-            </button>
-            <button class="reject-btn" data-user-id="${user._id}">
-                <i class="fas fa-times"></i> Reject
-            </button>
-        </div>
-    `;
-
-    return card;
-}
-
-// Handle approval or rejection
-async function handleApproval(userId, approve) {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:3002/api/auth/admin/${approve ? 'approve' : 'reject'}/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showNotification(`User ${approve ? 'approved' : 'rejected'} successfully`, 'success');
-            // Refresh the pending users and statistics
-            fetchPendingUsers();
-            fetchStatistics();
-        } else {
-            showNotification(result.message || 'Error processing request', 'error');
-        }
-    } catch (error) {
-        console.error('Error handling approval:', error);
-        showNotification('Error processing request', 'error');
-    }
-}
-
-// Set up navigation
-function setupNavigation() {
-    const manageUsersLink = document.getElementById('manage-users-link');
-    const manageAdminsLink = document.getElementById('manage-admins-link');
-    const systemSettingsLink = document.getElementById('system-settings-link');
-    const logoutLink = document.getElementById('logout-link');
-    
-    // Dashboard sections
-    const pendingUsersSection = document.getElementById('pending-users-section');
-    const manageAdminsSection = document.getElementById('manage-admins-section');
-    const systemSettingsSection = document.getElementById('system-settings-section');
-    
-    // Hide all sections except pending users
-    manageAdminsSection.classList.add('hidden');
-    systemSettingsSection.classList.add('hidden');
-    
-    // Manage users link (show pending users section)
-    manageUsersLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.remove('hidden');
-        manageAdminsSection.classList.add('hidden');
-        systemSettingsSection.classList.add('hidden');
+    // Add users to the table
+    recentUsers.forEach(user => {
+        const row = document.createElement('tr');
         
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        manageUsersLink.parentElement.classList.add('active');
-    });
-    
-    // Manage admins link
-    manageAdminsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.add('hidden');
-        manageAdminsSection.classList.remove('hidden');
-        systemSettingsSection.classList.add('hidden');
+        // Format date
+        const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }) : 'Unknown';
         
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        manageAdminsLink.parentElement.classList.add('active');
+        // Determine status
+        let statusClass = 'pending';
+        let statusText = 'Pending';
         
-        // Load admin users
-        loadAdminUsers();
-    });
-    
-    // System settings link
-    systemSettingsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        pendingUsersSection.classList.add('hidden');
-        manageAdminsSection.classList.add('hidden');
-        systemSettingsSection.classList.remove('hidden');
-        
-        // Update active link
-        document.querySelector('.nav-links li.active').classList.remove('active');
-        systemSettingsLink.parentElement.classList.add('active');
-    });
-    
-    // Logout link
-    logoutLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('token');
-        localStorage.removeItem('userType');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userEmail');
-        window.location.href = 'index.html';
-    });
-}
-
-// Load admin users
-async function loadAdminUsers() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3002/api/auth/admin/users', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch users');
+        if (user.approvalStatus === 'approved') {
+            statusClass = 'active';
+            statusText = 'Active';
+        } else if (user.approvalStatus === 'rejected') {
+            statusClass = 'inactive';
+            statusText = 'Rejected';
         }
         
-        const users = await response.json();
-        const adminUsers = users.filter(user => user.userType === 'admin');
-        
-        const adminsList = document.getElementById('admins-list');
-        adminsList.innerHTML = '';
-        
-        if (adminUsers.length === 0) {
-            adminsList.innerHTML = '<p class="no-users">No admin users found</p>';
-            return;
-        }
-        
-        adminUsers.forEach(admin => {
-            const adminCard = document.createElement('div');
-            adminCard.className = 'admin-card';
-            
-            adminCard.innerHTML = `
-                <div class="admin-info">
-                    <h3>${admin.name}</h3>
-                    <p><strong>ID:</strong> ${admin.id}</p>
-                    <p><strong>Email:</strong> ${admin.email}</p>
-                    <p><strong>Phone:</strong> ${admin.phone}</p>
-                    <p><strong>Super Admin:</strong> ${admin.isSuperAdmin ? 'Yes' : 'No'}</p>
-                </div>
+        row.innerHTML = `
+            <td>${user.name || 'Unknown'}</td>
+            <td>${user.userType || 'Unknown'}</td>
+            <td>${user.email || 'Unknown'}</td>
+            <td>${registrationDate}</td>
+            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <td>
                 <div class="action-buttons">
-                    <button class="edit-btn" data-user-id="${admin._id}">
+                    <button class="action-btn edit-btn" data-user-id="${user.id}">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    ${admin.isSuperAdmin ? '' : `
-                    <button class="delete-btn" data-user-id="${admin._id}">
+                    <button class="action-btn delete-btn" data-user-id="${user.id}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
-                    `}
                 </div>
-            `;
-            
-            adminsList.appendChild(adminCard);
-        });
+            </td>
+        `;
         
-    } catch (error) {
-        console.error('Error loading admin users:', error);
-        document.getElementById('admins-list').innerHTML = 
-            '<p class="error">Failed to load admin users. Please try again.</p>';
+        userTableBody.appendChild(row);
+    });
+    
+    // Add event listeners to buttons
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            alert(`Edit user with ID: ${userId}`);
+        });
+    });
+    
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            if (confirm(`Are you sure you want to delete user with ID: ${userId}?`)) {
+                // Delete user logic
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const updatedUsers = users.filter(user => user.id !== userId);
+                localStorage.setItem('users', JSON.stringify(updatedUsers));
+                
+                // Reload the page
+                location.reload();
+            }
+        });
+    });
+}
+
+function loadRecentDocumentRequests() {
+    // Get access requests from localStorage
+    const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+    
+    // Sort requests by date (newest first)
+    accessRequests.sort((a, b) => {
+        const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+        const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+        return dateB - dateA;
+    });
+    
+    // Get the recent requests table body
+    const requestTableBody = document.querySelector('.admin-section:nth-child(4) .admin-table tbody');
+    if (!requestTableBody) return;
+    
+    // Clear existing rows
+    requestTableBody.innerHTML = '';
+    
+    // Take only the first 5 requests
+    const recentRequests = accessRequests.slice(0, 5);
+    
+    // Update total requests count
+    document.querySelector('.stat-card:nth-child(3) .stat-value').textContent = accessRequests.length;
+    
+    if (recentRequests.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6">No document requests found</td>';
+        requestTableBody.appendChild(row);
+        return;
+    }
+    
+    // Add requests to the table
+    recentRequests.forEach(request => {
+        const row = document.createElement('tr');
+        
+        // Format date
+        const requestDate = request.timestamp ? new Date(request.timestamp).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }) : 'Unknown';
+        
+        // Determine status
+        let statusClass = 'pending';
+        let statusText = 'Pending';
+        
+        if (request.status === 'approved') {
+            statusClass = 'active';
+            statusText = 'Approved';
+        } else if (request.status === 'rejected') {
+            statusClass = 'inactive';
+            statusText = 'Rejected';
+        }
+        
+        row.innerHTML = `
+            <td>${request.id || 'Unknown'}</td>
+            <td>${request.legalProfessionalName || 'Unknown'}</td>
+            <td>${request.patientName || 'Unknown'}</td>
+            <td>${request.hospital || 'Unknown'}</td>
+            <td>${requestDate}</td>
+            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        `;
+        
+        requestTableBody.appendChild(row);
+    });
+}
+
+function loadAuditLogs() {
+    // Create a new section for audit logs
+    const mainContent = document.querySelector('.main-content');
+    const auditSection = document.createElement('div');
+    auditSection.className = 'admin-section';
+    
+    // Create audit logs from access requests and user activities
+    const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
+    const patientActivities = JSON.parse(localStorage.getItem('patientActivities') || '[]');
+    
+    // Combine and sort by timestamp
+    const auditLogs = [
+        ...accessRequests.map(req => ({
+            id: req.id,
+            type: 'Access Request',
+            user: req.legalProfessionalName,
+            action: `Requested access to ${req.patientName}'s records`,
+            timestamp: req.timestamp
+        })),
+        ...patientActivities.map(act => ({
+            id: act.id,
+            type: 'Patient Activity',
+            user: act.patientName,
+            action: act.description,
+            timestamp: act.timestamp
+        }))
+    ];
+    
+    // Sort by timestamp (newest first)
+    auditLogs.sort((a, b) => {
+        const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+        const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+        return dateB - dateA;
+    });
+    
+    // Create the section HTML
+    auditSection.innerHTML = `
+        <div class="section-header">
+            <h2 class="section-title">Audit Logs</h2>
+            <a href="admin-logs.html" class="section-action">
+                View All <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Log ID</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Date & Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${auditLogs.slice(0, 5).map(log => {
+                    const logDate = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown';
+                    return `
+                        <tr>
+                            <td>${log.id || 'Unknown'}</td>
+                            <td>${log.type || 'Unknown'}</td>
+                            <td>${log.user || 'Unknown'}</td>
+                            <td>${log.action || 'Unknown'}</td>
+                            <td>${logDate}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    // Append to main content
+    mainContent.appendChild(auditSection);
+}
+
+function removeReportsAndAnalytics() {
+    // Remove reports and analytics from sidebar
+    const reportsLink = document.querySelector('.sidebar ul li a[href="admin-reports.html"]');
+    if (reportsLink) {
+        reportsLink.parentElement.remove();
+    }
+    
+    // Remove reports card from stats
+    const reportsCard = document.querySelector('.stat-card:nth-child(4)');
+    if (reportsCard) {
+        reportsCard.remove();
+    }
+    
+    // Remove reports action card
+    const reportsActionCard = document.querySelector('.action-card:nth-child(3)');
+    if (reportsActionCard) {
+        reportsActionCard.remove();
     }
 }
 
-// Set up event listeners
-function setupEventListeners() {
-    // Refresh pending users button
-    document.getElementById('refresh-pending').addEventListener('click', () => {
-        fetchPendingUsers();
-    });
+function removeManageHospitals() {
+    // Remove manage hospitals from sidebar
+    const hospitalsLink = document.querySelector('.sidebar ul li a[href="admin-hospitals.html"]');
+    if (hospitalsLink) {
+        hospitalsLink.parentElement.remove();
+    }
     
-    // Add admin button
-    document.getElementById('add-admin-btn').addEventListener('click', () => {
-        document.getElementById('add-admin-modal').style.display = 'block';
-    });
+    // Remove hospitals card from stats
+    const hospitalsCard = document.querySelector('.stat-card:nth-child(2)');
+    if (hospitalsCard) {
+        hospitalsCard.remove();
+    }
     
-    // Close modal button
-    document.querySelector('.close').addEventListener('click', () => {
-        document.getElementById('add-admin-modal').style.display = 'none';
-    });
-    
-    // Add admin form submission
-    document.getElementById('add-admin-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const adminId = document.getElementById('admin-id').value;
-        const adminName = document.getElementById('admin-name-input').value;
-        const adminEmail = document.getElementById('admin-email').value;
-        const adminPhone = document.getElementById('admin-phone').value;
-        const adminPassword = document.getElementById('admin-password').value;
-        const isSuperAdmin = document.getElementById('admin-super').value === 'true';
-        
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3002/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    userType: 'admin',
-                    id: adminId,
-                    password: adminPassword,
-                    name: adminName,
-                    email: adminEmail,
-                    phone: adminPhone,
-                    isSuperAdmin: isSuperAdmin,
-                    approved: true,
-                    approvalStatus: 'approved'
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                showNotification('Admin user created successfully', 'success');
-                document.getElementById('add-admin-modal').style.display = 'none';
-                document.getElementById('add-admin-form').reset();
-                loadAdminUsers();
-                fetchStatistics();
-            } else {
-                showNotification(result.message || 'Error creating admin user', 'error');
-            }
-        } catch (error) {
-            console.error('Error creating admin user:', error);
-            showNotification('Error creating admin user', 'error');
-        }
-    });
-    
-    // Save settings button
-    document.getElementById('save-settings').addEventListener('click', () => {
-        const systemName = document.getElementById('system-name').value;
-        const autoApprove = document.getElementById('auto-approve').value;
-        
-        // Here you would typically save these settings to the server
-        showNotification('Settings saved successfully', 'success');
-    });
-    
-    // Event delegation for approve/reject buttons
-    document.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('approve-btn')) {
-            await handleApproval(e.target.dataset.userId, true);
-        } else if (e.target.classList.contains('reject-btn')) {
-            await handleApproval(e.target.dataset.userId, false);
-        }
-    });
-}
-
-// Show notification
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
+    // Remove add hospital action card
+    const hospitalActionCard = document.querySelector('.action-card:nth-child(2)');
+    if (hospitalActionCard) {
+        hospitalActionCard.remove();
+    }
 }
