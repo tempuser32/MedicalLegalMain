@@ -50,8 +50,6 @@ app.use('/js/medical', express.static(path.join(__dirname, '../js/medical')));
 app.use(express.static(path.join(__dirname, '../html'))); // Keep this last
 
 // Connect to MongoDB and start server
-const PORT = process.env.PORT || 3002;
-
 connectDB()
     .then(() => {
         app.listen(PORT, () => {
