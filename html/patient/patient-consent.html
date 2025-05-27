@@ -195,6 +195,39 @@
             color: rgba(255, 255, 255, 0.6);
             margin-bottom: 20px;
         }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background-color: #1e293b;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 15px;
+            width: 70%;
+            color: white;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -225,7 +258,7 @@
             <div class="consent-tabs">
                 <div class="consent-tab active" data-tab="active">Active Consents</div>
                 <div class="consent-tab" data-tab="pending">Pending Requests</div>
-                <div class="consent-tab" data-tab="expired">Expired Consents</div>
+                <div class="consent-tab" data-tab="rejected">Rejected Consents</div>
             </div>
             
             <div id="active-consents" class="consent-tab-content active">
@@ -252,36 +285,90 @@
                 </div>
             </div>
             
-            <div id="expired-consents" class="consent-tab-content">
-                <div class="consent-list" id="expired-consent-list">
-                    <!-- Expired consents will be loaded here -->
+            <div id="rejected-consents" class="consent-tab-content">
+                <div class="consent-list" id="rejected-consent-list">
+                    <!-- Rejected consents will be loaded here -->
                 </div>
                 
-                <div id="expired-empty-state" class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>No Expired Consents</h3>
-                    <p>You don't have any expired consents.</p>
+                <div id="rejected-empty-state" class="empty-state">
+                    <i class="fas fa-ban"></i>
+                    <h3>No Rejected Consents</h3>
+                    <p>You don't have any rejected consents.</p>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Modal for viewing record details -->
+        <div id="record-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modal-title">Record Details</h2>
+                <div id="modal-content"></div>
+                <div id="modal-actions" style="margin-top: 20px; text-align: right;"></div>
             </div>
         </div>
     </main>
 
     <script>
+        // Sample data for demonstration
+        const sampleRecords = [
+            {
+                id: "REC-001",
+                recordType: "medical",
+                doctor: "Dr. Sarah Johnson",
+                hospital: "General Hospital",
+                diagnosis: "Annual checkup",
+                uploadedBy: "Dr. Sarah Johnson",
+                uploadDate: "2023-05-15T10:30:00Z",
+                consentStatus: "approved"
+            },
+            {
+                id: "REC-002",
+                recordType: "lab",
+                doctor: "Dr. Michael Chen",
+                hospital: "City Medical Center",
+                diagnosis: "Blood test results",
+                uploadedBy: "Lab Technician John Davis",
+                uploadDate: "2023-05-20T14:45:00Z",
+                consentStatus: "pending"
+            },
+            {
+                id: "REC-003",
+                recordType: "prescription",
+                doctor: "Dr. Lisa Wong",
+                hospital: "Memorial Hospital",
+                diagnosis: "Allergy medication",
+                uploadedBy: "Dr. Lisa Wong",
+                uploadDate: "2023-05-25T09:15:00Z",
+                consentStatus: "rejected"
+            }
+        ];
+
         document.addEventListener('DOMContentLoaded', function() {
-            // Set up tab switching
-            setupTabs();
+            // Initialize tabs
+            initTabs();
             
-            // Create sample data if none exists
-            createSampleData();
+            // Load sample data
+            localStorage.setItem('consentRecords', JSON.stringify(sampleRecords));
             
-            // Load consent requests
-            loadConsentRequests();
+            // Display consents
+            displayConsents();
+            
+            // Set up modal close button
+            document.querySelector('.close').addEventListener('click', function() {
+                document.getElementById('record-modal').style.display = 'none';
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === document.getElementById('record-modal')) {
+                    document.getElementById('record-modal').style.display = 'none';
+                }
+            });
         });
 
-        function setupTabs() {
+        function initTabs() {
             const tabs = document.querySelectorAll('.consent-tab');
-            const tabContents = document.querySelectorAll('.consent-tab-content');
-            
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
                     // Remove active class from all tabs
@@ -291,7 +378,9 @@
                     this.classList.add('active');
                     
                     // Hide all tab contents
-                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.querySelectorAll('.consent-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
                     
                     // Show the selected tab content
                     const tabId = this.getAttribute('data-tab');
@@ -300,127 +389,35 @@
             });
         }
 
-        function createSampleData() {
-            // Check if we have medical records
-            let medicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
+        function displayConsents() {
+            const records = JSON.parse(localStorage.getItem('consentRecords') || '[]');
             
-            // If no records, create sample data
-            if (medicalRecords.length === 0) {
-                const patientName = localStorage.getItem('userName') || 'Patient';
-                const patientEmail = localStorage.getItem('userEmail') || 'patient@example.com';
-                
-                // Create sample records
-                medicalRecords = [
-                    {
-                        id: 'REC-001',
-                        patientName: patientName,
-                        patientEmail: patientEmail,
-                        recordType: 'medical',
-                        recordDate: new Date().toISOString(),
-                        doctor: 'Dr. Sarah Johnson',
-                        hospital: 'City Medical Center',
-                        diagnosis: 'Annual checkup',
-                        uploadedBy: 'Dr. Sarah Johnson',
-                        uploadDate: new Date().toISOString(),
-                        consentStatus: 'approved'
-                    },
-                    {
-                        id: 'REC-002',
-                        patientName: patientName,
-                        patientEmail: patientEmail,
-                        recordType: 'lab',
-                        recordDate: new Date().toISOString(),
-                        doctor: 'Dr. Michael Chen',
-                        hospital: 'City Medical Center',
-                        diagnosis: 'Blood test results',
-                        uploadedBy: 'Dr. Michael Chen',
-                        uploadDate: new Date().toISOString(),
-                        consentStatus: 'pending'
-                    },
-                    {
-                        id: 'REC-003',
-                        patientName: patientName,
-                        patientEmail: patientEmail,
-                        recordType: 'prescription',
-                        recordDate: new Date().toISOString(),
-                        doctor: 'Dr. Lisa Wong',
-                        hospital: 'Memorial Hospital',
-                        diagnosis: 'Allergy medication',
-                        uploadedBy: 'Dr. Lisa Wong',
-                        uploadDate: new Date().toISOString(),
-                        consentStatus: 'rejected'
-                    }
-                ];
-                
-                localStorage.setItem('medicalRecords', JSON.stringify(medicalRecords));
-            }
+            // Group records by consent status
+            const activeConsents = records.filter(record => record.consentStatus === 'approved');
+            const pendingConsents = records.filter(record => record.consentStatus === 'pending');
+            const rejectedConsents = records.filter(record => record.consentStatus === 'rejected');
+            
+            // Display each group
+            displayConsentGroup('active', activeConsents);
+            displayConsentGroup('pending', pendingConsents);
+            displayConsentGroup('rejected', rejectedConsents);
         }
 
-        function loadConsentRequests() {
-            // Get current patient name and email
-            const patientName = localStorage.getItem('userName');
-            const patientEmail = localStorage.getItem('userEmail');
-            
-            // Get all medical records
-            const allMedicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
-            
-            // Filter records for current patient
-            const patientRecords = allMedicalRecords.filter(record => 
-                record.patientName === patientName || 
-                record.patientEmail === patientEmail
-            );
-            
-            // Create consent requests from records
-            const pendingRequests = [];
-            const activeConsents = [];
-            const expiredConsents = [];
-            
-            patientRecords.forEach(record => {
-                // Create a consent request object
-                const consentRequest = {
-                    id: `CONSENT-${record.id}`,
-                    recordId: record.id,
-                    requestDate: record.uploadDate || new Date().toISOString(),
-                    requesterName: record.uploadedBy || 'Medical Staff',
-                    requesterType: 'Medical',
-                    recordType: record.recordType || 'medical',
-                    hospital: record.hospital || 'Unknown Hospital',
-                    status: record.consentStatus || 'pending',
-                    expiryDate: record.consentExpiryDate,
-                    record: record
-                };
-                
-                // Add to appropriate list based on status
-                if (consentRequest.status === 'approved') {
-                    activeConsents.push(consentRequest);
-                } else if (consentRequest.status === 'rejected') {
-                    expiredConsents.push(consentRequest);
-                } else {
-                    pendingRequests.push(consentRequest);
-                }
-            });
-            
-            // Display the consent requests
-            displayConsentRequests('active', activeConsents);
-            displayConsentRequests('pending', pendingRequests);
-            displayConsentRequests('expired', expiredConsents);
-        }
-
-        function displayConsentRequests(type, requests) {
+        function displayConsentGroup(type, consents) {
             const listElement = document.getElementById(`${type}-consent-list`);
             const emptyState = document.getElementById(`${type}-empty-state`);
             
-            if (requests.length > 0) {
+            if (consents.length > 0) {
                 // Hide empty state
                 emptyState.style.display = 'none';
                 
                 // Clear list
                 listElement.innerHTML = '';
                 
-                // Add requests
-                requests.forEach(request => {
-                    const requestCard = createConsentCard(request, type);
-                    listElement.appendChild(requestCard);
+                // Add consents
+                consents.forEach(consent => {
+                    const card = createConsentCard(consent, type);
+                    listElement.appendChild(card);
                 });
             } else {
                 // Show empty state
@@ -429,14 +426,13 @@
             }
         }
 
-        function createConsentCard(consent, type) {
+        function createConsentCard(record, type) {
             const card = document.createElement('div');
             card.className = 'consent-card';
-            card.setAttribute('data-id', consent.id);
             
             // Format date
-            const requestDate = new Date(consent.requestDate);
-            const formattedDate = requestDate.toLocaleDateString('en-US', {
+            const date = new Date(record.uploadDate);
+            const formattedDate = date.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -446,27 +442,27 @@
             let statusClass = 'pending';
             let statusText = 'Pending';
             
-            if (consent.status === 'approved') {
+            if (record.consentStatus === 'approved') {
                 statusClass = 'active';
                 statusText = 'Approved';
-            } else if (consent.status === 'rejected') {
+            } else if (record.consentStatus === 'rejected') {
                 statusClass = 'expired';
                 statusText = 'Rejected';
             }
             
-            // Create card content based on type
+            // Create action buttons based on type
             let actionsHTML = '';
             
             if (type === 'pending') {
                 actionsHTML = `
                     <div class="consent-actions">
-                        <button class="consent-btn view-btn" onclick="viewRecord('${consent.recordId}')">
+                        <button class="consent-btn view-btn" onclick="viewRecord('${record.id}')">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        <button class="consent-btn approve-btn" onclick="approveConsent('${consent.id}')">
+                        <button class="consent-btn approve-btn" onclick="approveConsent('${record.id}')">
                             <i class="fas fa-check"></i> Approve
                         </button>
-                        <button class="consent-btn revoke-btn" onclick="rejectConsent('${consent.id}')">
+                        <button class="consent-btn revoke-btn" onclick="rejectConsent('${record.id}')">
                             <i class="fas fa-times"></i> Reject
                         </button>
                     </div>
@@ -474,10 +470,10 @@
             } else if (type === 'active') {
                 actionsHTML = `
                     <div class="consent-actions">
-                        <button class="consent-btn view-btn" onclick="viewRecord('${consent.recordId}')">
+                        <button class="consent-btn view-btn" onclick="viewRecord('${record.id}')">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        <button class="consent-btn revoke-btn" onclick="revokeConsent('${consent.id}')">
+                        <button class="consent-btn revoke-btn" onclick="revokeConsent('${record.id}')">
                             <i class="fas fa-ban"></i> Revoke
                         </button>
                     </div>
@@ -485,26 +481,26 @@
             } else {
                 actionsHTML = `
                     <div class="consent-actions">
-                        <button class="consent-btn view-btn" onclick="viewRecord('${consent.recordId}')">
+                        <button class="consent-btn view-btn" onclick="viewRecord('${record.id}')">
                             <i class="fas fa-eye"></i> View
                         </button>
                     </div>
                 `;
             }
             
-            const recordType = consent.recordType || 'medical';
-            const capitalizedType = recordType.charAt(0).toUpperCase() + recordType.slice(1);
+            // Capitalize record type
+            const recordType = record.recordType.charAt(0).toUpperCase() + record.recordType.slice(1);
             
             card.innerHTML = `
                 <div class="consent-header">
-                    <h3 class="consent-title">${capitalizedType} Record</h3>
+                    <h3 class="consent-title">${recordType} Record</h3>
                     <span class="consent-date">${formattedDate}</span>
                 </div>
                 <span class="consent-status ${statusClass}">${statusText}</span>
                 <div class="consent-details">
-                    <p><strong>Requester:</strong> ${consent.requesterName}</p>
-                    <p><strong>Hospital:</strong> ${consent.hospital}</p>
-                    <p><strong>Record Type:</strong> ${capitalizedType}</p>
+                    <p><strong>Requester:</strong> ${record.uploadedBy}</p>
+                    <p><strong>Hospital:</strong> ${record.hospital}</p>
+                    <p><strong>Diagnosis:</strong> ${record.diagnosis}</p>
                 </div>
                 ${actionsHTML}
             `;
@@ -513,78 +509,88 @@
         }
 
         function viewRecord(recordId) {
-            alert("Viewing record: " + recordId);
-        }
-
-        function approveConsent(consentId) {
-            const recordId = consentId.replace('CONSENT-', '');
+            const records = JSON.parse(localStorage.getItem('consentRecords') || '[]');
+            const record = records.find(r => r.id === recordId);
             
-            // Get all medical records
-            const allMedicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
-            
-            // Find the specific record
-            const recordIndex = allMedicalRecords.findIndex(r => r.id === recordId);
-            
-            if (recordIndex !== -1) {
-                // Update consent status
-                allMedicalRecords[recordIndex].consentStatus = 'approved';
+            if (record) {
+                // Format date
+                const date = new Date(record.uploadDate);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
                 
-                // Save back to localStorage
-                localStorage.setItem('medicalRecords', JSON.stringify(allMedicalRecords));
+                // Set modal title
+                document.getElementById('modal-title').textContent = 
+                    `${record.recordType.charAt(0).toUpperCase() + record.recordType.slice(1)} Record Details`;
                 
-                // Reload consent requests
-                loadConsentRequests();
+                // Set modal content
+                document.getElementById('modal-content').innerHTML = `
+                    <p><strong>Record ID:</strong> ${record.id}</p>
+                    <p><strong>Date:</strong> ${formattedDate}</p>
+                    <p><strong>Doctor:</strong> ${record.doctor}</p>
+                    <p><strong>Hospital:</strong> ${record.hospital}</p>
+                    <p><strong>Diagnosis:</strong> ${record.diagnosis}</p>
+                    <p><strong>Uploaded By:</strong> ${record.uploadedBy}</p>
+                    <p><strong>Consent Status:</strong> ${record.consentStatus.charAt(0).toUpperCase() + record.consentStatus.slice(1)}</p>
+                `;
                 
-                // Show success message
-                alert('Consent approved successfully');
+                // Set modal actions based on consent status
+                let actionsHTML = '';
+                
+                if (record.consentStatus === 'pending') {
+                    actionsHTML = `
+                        <button onclick="approveConsent('${record.id}')" style="padding: 8px 16px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button onclick="rejectConsent('${record.id}')" style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    `;
+                } else if (record.consentStatus === 'approved') {
+                    actionsHTML = `
+                        <button onclick="revokeConsent('${record.id}')" style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            <i class="fas fa-ban"></i> Revoke
+                        </button>
+                    `;
+                }
+                
+                document.getElementById('modal-actions').innerHTML = actionsHTML;
+                
+                // Show modal
+                document.getElementById('record-modal').style.display = 'block';
             }
         }
 
-        function rejectConsent(consentId) {
-            const recordId = consentId.replace('CONSENT-', '');
-            
-            // Get all medical records
-            const allMedicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
-            
-            // Find the specific record
-            const recordIndex = allMedicalRecords.findIndex(r => r.id === recordId);
-            
-            if (recordIndex !== -1) {
-                // Update consent status
-                allMedicalRecords[recordIndex].consentStatus = 'rejected';
-                
-                // Save back to localStorage
-                localStorage.setItem('medicalRecords', JSON.stringify(allMedicalRecords));
-                
-                // Reload consent requests
-                loadConsentRequests();
-                
-                // Show success message
-                alert('Consent rejected successfully');
-            }
+        function approveConsent(recordId) {
+            updateConsentStatus(recordId, 'approved');
+            alert('Consent approved successfully');
         }
 
-        function revokeConsent(consentId) {
-            const recordId = consentId.replace('CONSENT-', '');
-            
-            // Get all medical records
-            const allMedicalRecords = JSON.parse(localStorage.getItem('medicalRecords') || '[]');
-            
-            // Find the specific record
-            const recordIndex = allMedicalRecords.findIndex(r => r.id === recordId);
+        function rejectConsent(recordId) {
+            updateConsentStatus(recordId, 'rejected');
+            alert('Consent rejected successfully');
+        }
+
+        function revokeConsent(recordId) {
+            updateConsentStatus(recordId, 'rejected');
+            alert('Consent revoked successfully');
+        }
+
+        function updateConsentStatus(recordId, status) {
+            const records = JSON.parse(localStorage.getItem('consentRecords') || '[]');
+            const recordIndex = records.findIndex(r => r.id === recordId);
             
             if (recordIndex !== -1) {
-                // Update consent status
-                allMedicalRecords[recordIndex].consentStatus = 'rejected';
+                records[recordIndex].consentStatus = status;
+                localStorage.setItem('consentRecords', JSON.stringify(records));
                 
-                // Save back to localStorage
-                localStorage.setItem('medicalRecords', JSON.stringify(allMedicalRecords));
+                // Close modal if open
+                document.getElementById('record-modal').style.display = 'none';
                 
-                // Reload consent requests
-                loadConsentRequests();
-                
-                // Show success message
-                alert('Consent revoked successfully');
+                // Refresh display
+                displayConsents();
             }
         }
     </script>
