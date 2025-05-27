@@ -359,7 +359,8 @@ function viewDocument(requestId, docType) {
     }
     
     if (!fileName || !fileData) {
-        alert('Document not found');
+        console.error('Document data missing:', docType);
+        alert('Document not found or data is corrupted');
         return;
     }
     
@@ -473,10 +474,7 @@ function viewDocument(requestId, docType) {
 
 // Function to download document
 function downloadDocument(requestId, docType) {
-    // Get access requests from localStorage
     const accessRequests = JSON.parse(localStorage.getItem('accessRequests') || '[]');
-    
-    // Find the request
     const request = accessRequests.find(r => r.id === requestId);
     
     if (!request) {
@@ -484,46 +482,38 @@ function downloadDocument(requestId, docType) {
         return;
     }
     
-    let fileName = '';
-    let fileData = '';
+    let fileData;
+    let fileName;
     
-    // Get the appropriate file data based on document type
+    // Get correct document data
     switch(docType) {
         case 'advocate-license':
-            fileName = request.advocateLicenseName;
             fileData = request.advocateLicenseData;
+            fileName = request.advocateLicenseName || 'advocate-license.pdf';
             break;
         case 'purpose-document':
-            fileName = request.purposeDocumentName;
             fileData = request.purposeDocumentData;
+            fileName = request.purposeDocumentName || 'purpose-document.pdf';
             break;
         case 'court-order':
-            fileName = request.courtOrderDocumentName;
             fileData = request.courtOrderDocumentData;
+            fileName = request.courtOrderDocumentName || 'court-order.pdf';
             break;
     }
     
-    if (!fileName || !fileData) {
-        alert('Document not found');
+    if (!fileData) {
+        console.error('Document data missing:', docType);
+        alert('Document not found or data is corrupted');
         return;
     }
     
-    try {
-        // Create a temporary link element
-        const a = document.createElement('a');
-        a.href = fileData;
-        a.download = fileName;
-        
-        // Append to the document, click it, and remove it
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        console.log('Document download initiated successfully');
-    } catch (error) {
-        console.error('Error downloading document:', error);
-        alert('Error downloading document. Please try again.');
-    }
+    // Create download link
+    const a = document.createElement('a');
+    a.href = fileData;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 function approveRequest(requestId, closeModal = false) {
