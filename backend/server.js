@@ -1,5 +1,5 @@
 const express = require('express');
-const connectDB = require('./db/connection');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -49,14 +49,38 @@ app.use('/css/medical', express.static(path.join(__dirname, '../css/medical')));
 app.use('/js/medical', express.static(path.join(__dirname, '../js/medical')));
 app.use(express.static(path.join(__dirname, '../html'))); // Keep this last
 
-// Connect to MongoDB and start server
-connectDB()
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    family: 4,
+    retryWrites: true,
+    w: 'majority',
+    keepAlive: true,
+    keepAliveInitialDelay: 300000,
+    autoIndex: true
+})
+.then(() => {
+    console.log('Successfully connected to MongoDB');
+    mongoose.connection.on('error', err => console.error('MongoDB connection error:', err));
+    mongoose.connection.on('disconnected', () => console.log('MongoDB disconnected'));
+
+    mongoose.connection.db.admin().ping()
+        .then(() => {
+            console.log('Database is accessible');
+            const PORT = process.env.PORT || 3002;
+            app.listen(PORT, () => {
+                console.log(`Server is running on port ${PORT}`);
+            });
+        })
+        .catch(err => {
+            console.error('Database ping failed:', err);
+            process.exit(1);
         });
-    })
-    .catch(err => {
-        console.error('Failed to start server:', err);
-        process.exit(1);
-    });
+})
+.catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+});
