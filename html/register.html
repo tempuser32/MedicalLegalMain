@@ -284,158 +284,24 @@
             }
 
             // Validate phone number (more flexible regex to allow different formats)
-                
-                    <div class="form-group">
-                        <label for="id">ID / Credentials *</label>
-                        <input type="text" id="id" name="id" placeholder="e.g., Hospital ID, BAR ID, Aadhaar" required>
-                    </div>
-                
-                    <div class="form-group">
-                        <label for="name">Full Name *</label>
-                        <input type="text" id="name" name="name" placeholder="Enter your full name" required>
-                    </div>
-                
-                    <div class="form-group">
-                        <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                    </div>
-                
-                    <div class="form-group">
-                        <label for="password">Password *</label>
-                        <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-                    </div>
-                
-                    <div class="form-group">
-                        <label for="confirm-password">Confirm Password *</label>
-                        <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm your password" required>
-                    </div>
-                
-                    <div class="form-group">
-                        <label for="phone">Phone Number *</label>
-                        <input type="tel" id="phone" name="phone" placeholder="Enter your phone number" required>
-                    </div>
-                
-                    <!-- Hospital field for medical staff (initially hidden) -->
-                    <div class="form-group" id="hospital-group" style="display: none;">
-                        <label for="hospital">Hospital *</label>
-                        <select id="hospital" name="hospital">
-                            <option value="" disabled selected>Select Hospital</option>
-                            <option value="General Hospital">General Hospital</option>
-                            <option value="City Medical Center">City Medical Center</option>
-                            <option value="Memorial Hospital">Memorial Hospital</option>
-                        </select>
-                    </div>
-                
-                    <!-- Firm field for legal professionals (initially hidden) -->
-                    <div class="form-group" id="firm-group" style="display: none;">
-                        <label for="firm">Law Firm *</label>
-                        <input type="text" id="firm" name="firm" placeholder="Enter your law firm name">
-                    </div>
-                
-                    <div class="form-group full-width">
-                        <button type="submit" class="btn"><i class="fas fa-user-plus"></i> Create Profile</button>
-                    </div>
-                </div>
-            </form>
-            <div id="error-message" class="error-message"></div>
-            <p>Already have an account? <a href="index.html">Login here</a></p>
-        </div>
-        <script>
-            const registerForm = document.getElementById('register-form');
-            const errorMessage = document.getElementById('error-message');
-            const userTypeSelect = document.getElementById('user-type');
-            const hospitalGroup = document.getElementById('hospital-group');
-            const firmGroup = document.getElementById('firm-group');
+            const phoneRegex = /^[\d\s\+\-\(\)]{10,15}$/;
+            if (!phoneRegex.test(phone)) {
+                errorMessage.textContent = 'Please enter a valid phone number';
+                errorMessage.style.display = 'block';
+                return;
+            }
 
-            // Show/hide fields based on user type
-            userTypeSelect.addEventListener('change', function() {
-                const userType = this.value;
+            try {
+                // Show loading state
+                errorMessage.textContent = "Processing registration...";
+                errorMessage.style.display = 'block';
+                errorMessage.style.color = '#333';
                 
-                // Hide all conditional fields first
-                hospitalGroup.style.display = 'none';
-                firmGroup.style.display = 'none';
-                
-                // Show relevant fields based on user type
-                if (userType === 'medical') {
-                    hospitalGroup.style.display = 'block';
-                    document.getElementById('hospital').required = true;
-                } else if (userType === 'legal') {
-                    firmGroup.style.display = 'block';
-                    document.getElementById('firm').required = true;
-                }
-            });
-
-            registerForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const userType = document.getElementById('user-type').value;
-                const id = document.getElementById('id').value;
-                const password = document.getElementById('password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
-                const name = document.getElementById('name').value;
-                const email = document.getElementById('email').value;
-                const phone = document.getElementById('phone').value;
-                
-                // Get conditional fields based on user type
-                let hospital = '';
-                let firm = '';
-                
-                if (userType === 'medical') {
-                    hospital = document.getElementById('hospital').value;
-                    if (!hospital) {
-                        errorMessage.textContent = 'Please select a hospital';
-                        errorMessage.style.display = 'block';
-                        return;
-                    }
-                } else if (userType === 'legal') {
-                    firm = document.getElementById('firm').value;
-                    if (!firm) {
-                        errorMessage.textContent = 'Please enter your law firm name';
-                        errorMessage.style.display = 'block';
-                        return;
-                    }
-                }
-
-                // Validate passwords match
-                if (password !== confirmPassword) {
-                    errorMessage.textContent = 'Passwords do not match';
-                    errorMessage.style.display = 'block';
-                    return;
-                }
-
-                // Validate password strength
-                if (password.length < 8) {
-                    errorMessage.textContent = 'Password must be at least 8 characters long';
-                    errorMessage.style.display = 'block';
-                    return;
-                }
-
-                // Validate email format
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) {
-                    errorMessage.textContent = 'Please enter a valid email address';
-                    errorMessage.style.display = 'block';
-                    return;
-                }
-
-                // Validate phone number (more flexible regex to allow different formats)
-                const phoneRegex = /^[\d\s\+\-\(\)]{10,15}$/;
-                if (!phoneRegex.test(phone)) {
-                    errorMessage.textContent = 'Please enter a valid phone number';
-                    errorMessage.style.display = 'block';
-                    return;
-                }
+                const API_CONFIG = {
+                    baseUrl: 'https://medicolegal.onrender.com/api'
+                };
 
                 try {
-                    // Show loading state
-                    errorMessage.textContent = "Processing registration...";
-                    errorMessage.style.display = 'block';
-                    errorMessage.style.color = '#333';
-
-                    const API_CONFIG = {
-                        baseUrl: 'https://medicolegal.onrender.com/api'
-                    };
-
                     const response = await fetch(`${API_CONFIG.baseUrl}/auth/register`, {
                         method: 'POST',
                         headers: {
@@ -448,42 +314,38 @@
                             name,
                             email,
                             phone,
-                            specialization: userType === 'medical' ? hospital : '',
-                            hospitalName: hospital,
-                            department: '',
-                            experience: '',
-                            qualifications: userType === 'legal' ? firm : '',
-                            approved: false,
-                            approvalStatus: 'pending',
-                            approvedBy: '',
-                            approvalDate: null,
-                            isAdmin: false,
-                            isSuperAdmin: false
+                            hospital,
+                            firm
                         }),
                     });
 
                     const data = await response.json();
 
                     if (response.ok) {
-                        // Save token and user data to localStorage
-                        localStorage.setItem('token', data.token);
-                        localStorage.setItem('userProfile', JSON.stringify(data.user));
-                        
                         alert('Profile created successfully! You can now login.');
                         window.location.href = 'index.html';
                     } else {
-                        console.error('Registration error:', data.error);
+                        // Handle field-specific errors
+                        if (data.field === 'email') {
+                            document.getElementById('email').focus();
+                        }
                         errorMessage.textContent = data.message || 'Registration failed';
                         errorMessage.style.display = 'block';
                         errorMessage.style.color = 'red';
                     }
                 } catch (error) {
-                    console.error('API error:', error);
-                    errorMessage.textContent = error.message || 'Failed to connect to server. Please try again.';
+                    console.error('Registration error:', error);
+                    errorMessage.textContent = 'Failed to process registration. Please try again.';
                     errorMessage.style.display = 'block';
                     errorMessage.style.color = 'red';
                 }
-            });
-        </script>
-    </body>
-    </html>
+            } catch (error) {
+                console.error('Registration error:', error);
+                errorMessage.textContent = 'Failed to process registration. Please try again.';
+                errorMessage.style.display = 'block';
+                errorMessage.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>

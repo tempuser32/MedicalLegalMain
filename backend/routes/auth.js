@@ -54,52 +54,17 @@ const verifySuperAdmin = (req, res, next) => {
 // Registration route
 router.post('/register', async (req, res) => {
     try {
-        const { 
-            userType, 
-            name, 
-            email, 
-            phone, 
-            password, 
-            specialization = '', 
-            hospitalName = '', 
-            department = '', 
-            experience = '', 
-            qualifications = '',
-            approved = false,
-            approvalStatus = 'pending',
-            approvedBy = '',
-            approvalDate = null,
-            isAdmin = false,
-            isSuperAdmin = false
-        } = req.body;
+        const { userType, name, email, phone, password, specialization, hospitalName, department, experience, qualifications } = req.body;
 
         // Validate required fields
         if (!userType || !name || !email || !phone || !password) {
-            return res.status(400).json({ 
-                message: 'Missing required fields',
-                required: ['userType', 'name', 'email', 'phone', 'password']
-            });
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: 'Invalid email format' });
-        }
-
-        // Validate phone number (basic validation)
-        const phoneRegex = /^[\d\s-+()]{10,}$/;
-        if (!phoneRegex.test(phone)) {
-            return res.status(400).json({ message: 'Invalid phone number format' });
+            return res.status(400).json({ message: 'All fields are required' });
         }
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ 
-                message: 'User already exists',
-                email: email
-            });
+            return res.status(400).json({ message: 'User already exists' });
         }
 
         // Generate unique ID
@@ -108,7 +73,7 @@ router.post('/register', async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create new user with all required fields
+        // Create new user
         const newUser = new User({
             id,
             userType,
@@ -121,23 +86,13 @@ router.post('/register', async (req, res) => {
             department,
             experience,
             qualifications,
-            approved,
-            approvalStatus,
-            approvedBy,
-            approvalDate,
-            isAdmin,
-            isSuperAdmin,
+            approvalStatus: 'pending',
             failedAttempts: 0,
             accountLocked: false
         });
 
         // Save user to MongoDB
         await newUser.save();
-        console.log('User created successfully:', { 
-            id: newUser.id, 
-            email: newUser.email,
-            userType: newUser.userType
-        });
 
         // Create token
         const token = jwt.sign(
@@ -146,7 +101,7 @@ router.post('/register', async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        // Return success response without sensitive data
+        // Return success response without password
         res.status(201).json({
             message: 'Registration successful',
             token,
@@ -156,25 +111,12 @@ router.post('/register', async (req, res) => {
                 email: newUser.email,
                 phone: newUser.phone,
                 userType: newUser.userType,
-                approvalStatus: newUser.approvalStatus,
-                createdAt: newUser.createdAt
+                approvalStatus: newUser.approvalStatus
             }
         });
     } catch (error) {
         console.error('Registration error:', error);
-        
-        // Handle specific error cases
-        if (error.code === 11000) {
-            return res.status(400).json({ 
-                message: 'Duplicate entry',
-                error: 'This email is already registered'
-            });
-        }
-
-        return res.status(500).json({ 
-            message: 'Server error during registration',
-            error: error.message
-        });
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
