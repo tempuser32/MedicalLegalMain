@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Notifications - MedLegal</title>
     <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -18,6 +17,7 @@
             display: flex;
             gap: 15px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .filter-btn {
@@ -31,8 +31,8 @@
         }
         
         .filter-btn.active {
-            background: rgba(234, 88, 12, 0.5);
-            border-color: #ea580c;
+            background: rgba(59, 130, 246, 0.5);
+            border-color: #3b82f6;
         }
         
         .notification-list {
@@ -55,18 +55,18 @@
         .notification-item:hover {
             background: rgba(30, 41, 59, 0.6);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(234, 88, 12, 0.2);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
         }
         
         .notification-item.unread {
-            border-left: 4px solid #ea580c;
+            border-left: 4px solid #3b82f6;
         }
         
         .notification-icon {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(234, 88, 12, 0.2);
+            background: rgba(59, 130, 246, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -74,7 +74,7 @@
         }
         
         .notification-icon i {
-            color: #fb923c;
+            color: #60a5fa;
             font-size: 18px;
         }
         
@@ -102,6 +102,7 @@
             display: flex;
             gap: 10px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
         
         .notification-btn {
@@ -134,13 +135,13 @@
         }
         
         .view-btn {
-            background: rgba(234, 88, 12, 0.2);
-            color: #fb923c;
-            border: 1px solid rgba(234, 88, 12, 0.3);
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
         
         .view-btn:hover {
-            background: rgba(234, 88, 12, 0.4);
+            background: rgba(59, 130, 246, 0.4);
         }
         
         .mark-read-btn {
@@ -151,7 +152,7 @@
         }
         
         .mark-read-btn:hover {
-            background: rgba(234, 88, 12, 0.2);
+            background: rgba(59, 130, 246, 0.2);
         }
         
         .empty-state {
@@ -174,20 +175,20 @@
         }
         
         /* Notification type-specific styles */
-        .notification-icon.access-request {
-            background: rgba(245, 158, 11, 0.2);
+        .notification-icon.user {
+            background: rgba(16, 185, 129, 0.2);
         }
         
-        .notification-icon.access-request i {
-            color: #fbbf24;
+        .notification-icon.user i {
+            color: #34d399;
         }
         
         .notification-icon.system {
-            background: rgba(234, 88, 12, 0.2);
+            background: rgba(59, 130, 246, 0.2);
         }
         
         .notification-icon.system i {
-            color: #fb923c;
+            color: #60a5fa;
         }
         
         .notification-icon.alert {
@@ -198,25 +199,25 @@
             color: #f87171;
         }
         
-        .notification-icon.user {
-            background: rgba(16, 185, 129, 0.2);
+        .notification-icon.access-request {
+            background: rgba(245, 158, 11, 0.2);
         }
         
-        .notification-icon.user i {
-            color: #34d399;
+        .notification-icon.access-request i {
+            color: #fbbf24;
         }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <div class="profile">
-            <a href="admin-profile.html"><i class="fas fa-user-circle profile-icon"></i></a>
+            <a href="../profile.html"><i class="fas fa-user-circle profile-icon"></i></a>
         </div>
         <ul>
             <li><a href="admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="admin-notifications.html" class="active"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="admin-users.html"><i class="fas fa-users"></i> Manage Users</a></li>
-            <li><a href="admin-logs.html"><i class="fas fa-clipboard-list"></i> System Logs</a></li>
+            <li><a href="admin-notifications.html" class="active"><i class="fas fa-bell"></i> Notifications <span class="badge">0</span></a></li>
+            <li><a href="admin-users.html"><i class="fas fa-users"></i> User Management</a></li>
+            <li><a href="admin-logs.html"><i class="fas fa-history"></i> User Activity Logs</a></li>
             <li><a href="admin-settings.html"><i class="fas fa-cog"></i> Settings</a></li>
             <li><a href="../index.html"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
@@ -238,248 +239,12 @@
                 <!-- Notifications will be loaded here -->
                 <div class="empty-state">
                     <i class="fas fa-bell-slash"></i>
-                    <p>No notifications to display</p>
+                    <p>Loading notifications...</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load notifications
-            loadNotifications();
-            
-            // Set up filter buttons
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            filterButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove active class from all buttons
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-                    
-                    // Add active class to clicked button
-                    this.classList.add('active');
-                    
-                    // Apply filter
-                    const filter = this.getAttribute('data-filter');
-                    filterNotifications(filter);
-                });
-            });
-        });
-        
-        function loadNotifications() {
-            const notificationList = document.getElementById('notification-list');
-            let notifications = JSON.parse(localStorage.getItem('adminNotifications') || '[]');
-            
-            // Display notifications
-            if (notifications.length > 0) {
-                notificationList.innerHTML = '';
-                
-                // Sort by timestamp (newest first)
-                notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                notifications.forEach(notification => {
-                    const notificationItem = createNotificationItem(notification);
-                    notificationList.appendChild(notificationItem);
-                });
-            }
-        }
-        
-        function createNotificationItem(notification) {
-            const notificationItem = document.createElement('div');
-            notificationItem.className = `notification-item ${notification.read ? '' : 'unread'}`;
-            notificationItem.setAttribute('data-id', notification.id);
-            notificationItem.setAttribute('data-type', notification.type);
-            
-            // Format timestamp
-            const timestamp = new Date(notification.timestamp);
-            const formattedTime = formatTimeAgo(timestamp);
-            
-            // Determine icon based on notification type
-            let iconClass = 'fa-bell';
-            let notificationType = 'system';
-            
-            if (notification.type === 'user') {
-                iconClass = 'fa-user';
-                notificationType = 'user';
-            } else if (notification.type === 'alert') {
-                iconClass = 'fa-exclamation-triangle';
-                notificationType = 'alert';
-            } else if (notification.type === 'access_request') {
-                iconClass = 'fa-file-signature';
-                notificationType = 'access-request';
-            }
-            
-            // Create notification content
-            let actionsHtml = '';
-            
-            // Add specific actions based on notification type
-            if (notification.type === 'user' && notification.userId) {
-                actionsHtml = `
-                    <div class="notification-actions">
-                        <button class="notification-btn view-btn" data-user-id="${notification.userId}">View User</button>
-                        <button class="notification-btn mark-read-btn" data-notification-id="${notification.id}">${notification.read ? 'Mark as Unread' : 'Mark as Read'}</button>
-                    </div>
-                `;
-            } else if (notification.type === 'alert' && notification.alertId) {
-                actionsHtml = `
-                    <div class="notification-actions">
-                        <button class="notification-btn view-btn" data-alert-id="${notification.alertId}">View Alert</button>
-                        <button class="notification-btn mark-read-btn" data-notification-id="${notification.id}">${notification.read ? 'Mark as Unread' : 'Mark as Read'}</button>
-                    </div>
-                `;
-            } else {
-                actionsHtml = `
-                    <div class="notification-actions">
-                        <button class="notification-btn mark-read-btn" data-notification-id="${notification.id}">${notification.read ? 'Mark as Unread' : 'Mark as Read'}</button>
-                    </div>
-                `;
-            }
-            
-            notificationItem.innerHTML = `
-                <div class="notification-icon ${notificationType}">
-                    <i class="fas ${iconClass}"></i>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${notification.title}</div>
-                    <div class="notification-message">${notification.message}</div>
-                    <div class="notification-time">${formattedTime}</div>
-                    ${actionsHtml}
-                </div>
-            `;
-            
-            // Add event listeners for action buttons
-            setTimeout(() => {
-                const markReadBtn = notificationItem.querySelector('.mark-read-btn');
-                if (markReadBtn) {
-                    markReadBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        toggleReadStatus(notification.id);
-                    });
-                }
-                
-                const viewBtn = notificationItem.querySelector('.view-btn');
-                if (viewBtn) {
-                    viewBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        if (notification.type === 'user') {
-                            viewUserDetails(notification.userId);
-                        } else if (notification.type === 'alert') {
-                            viewAlertDetails(notification.alertId);
-                        }
-                    });
-                }
-            }, 0);
-            
-            return notificationItem;
-        }
-        
-        function filterNotifications(filter) {
-            const notificationItems = document.querySelectorAll('.notification-item');
-            
-            notificationItems.forEach(item => {
-                if (filter === 'all') {
-                    item.style.display = 'flex';
-                } else if (filter === 'unread') {
-                    item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
-                } else {
-                    item.style.display = item.getAttribute('data-type') === filter ? 'flex' : 'none';
-                }
-            });
-            
-            // Show empty state if no notifications match the filter
-            const visibleItems = Array.from(notificationItems).filter(item => item.style.display !== 'none');
-            const notificationList = document.getElementById('notification-list');
-            
-            if (visibleItems.length === 0) {
-                const emptyState = document.createElement('div');
-                emptyState.className = 'empty-state';
-                emptyState.innerHTML = `
-                    <i class="fas fa-bell-slash"></i>
-                    <p>No ${filter === 'all' ? '' : filter} notifications to display</p>
-                `;
-                
-                // Remove any existing empty state
-                const existingEmptyState = notificationList.querySelector('.empty-state');
-                if (existingEmptyState) {
-                    existingEmptyState.remove();
-                }
-                
-                notificationList.appendChild(emptyState);
-            } else {
-                // Remove empty state if there are visible items
-                const existingEmptyState = notificationList.querySelector('.empty-state');
-                if (existingEmptyState) {
-                    existingEmptyState.remove();
-                }
-            }
-        }
-        
-        function toggleReadStatus(notificationId) {
-            const notifications = JSON.parse(localStorage.getItem('adminNotifications') || '[]');
-            const notificationIndex = notifications.findIndex(n => n.id === notificationId);
-            
-            if (notificationIndex !== -1) {
-                notifications[notificationIndex].read = !notifications[notificationIndex].read;
-                localStorage.setItem('adminNotifications', JSON.stringify(notifications));
-                
-                // Update UI
-                const notificationItem = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
-                if (notificationItem) {
-                    if (notifications[notificationIndex].read) {
-                        notificationItem.classList.remove('unread');
-                    } else {
-                        notificationItem.classList.add('unread');
-                    }
-                    
-                    const markReadBtn = notificationItem.querySelector('.mark-read-btn');
-                    if (markReadBtn) {
-                        markReadBtn.textContent = notifications[notificationIndex].read ? 'Mark as Unread' : 'Mark as Read';
-                    }
-                }
-            }
-        }
-        
-        function viewUserDetails(userId) {
-            // In a real app, this would navigate to the user details page
-            window.location.href = `admin-users.html?user=${userId}`;
-        }
-        
-        function viewAlertDetails(alertId) {
-            // In a real app, this would navigate to the alert details page
-            window.location.href = `admin-logs.html?alert=${alertId}`;
-        }
-        
-        function formatTimeAgo(date) {
-            const now = new Date();
-            const diffInSeconds = Math.floor((now - date) / 1000);
-            
-            if (diffInSeconds < 60) {
-                return 'Just now';
-            }
-            
-            const diffInMinutes = Math.floor(diffInSeconds / 60);
-            if (diffInMinutes < 60) {
-                return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-            }
-            
-            const diffInHours = Math.floor(diffInMinutes / 60);
-            if (diffInHours < 24) {
-                return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-            }
-            
-            const diffInDays = Math.floor(diffInHours / 24);
-            if (diffInDays < 30) {
-                return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-            }
-            
-            const diffInMonths = Math.floor(diffInDays / 30);
-            if (diffInMonths < 12) {
-                return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
-            }
-            
-            const diffInYears = Math.floor(diffInMonths / 12);
-            return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
-        }
-    </script>
+    <script src="/js/admin-notifications.js"></script>
 </body>
 </html>
