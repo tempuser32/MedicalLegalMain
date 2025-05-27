@@ -7,6 +7,66 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filters select, .filters input {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            background: linear-gradient(90deg, #3b82f6, #1e40af);
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        table th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+        }
+        
+        table tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
 </head>
 <body>
     <div class="sidebar">
@@ -14,8 +74,8 @@
             <a href="../profile.html"><i class="fas fa-user-circle profile-icon"></i></a>
         </div>
         <ul>
-            <li><a href="../dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="../notifications.html"><i class="fas fa-bell"></i> Notifications <span class="badge">3</span></a></li>
+            <li><a href="admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="admin-notifications.html"><i class="fas fa-bell"></i> Notifications <span class="badge">3</span></a></li>
             <li><a href="admin-users.html"><i class="fas fa-users"></i> User Management</a></li>
             <li><a href="admin-logs.html" class="active"><i class="fas fa-history"></i> User Activity Logs</a></li>
             <li><a href="admin-settings.html"><i class="fas fa-cog"></i> Settings</a></li>
@@ -29,17 +89,18 @@
             <div class="filters">
                 <select id="logType">
                     <option value="all">All Activities</option>
-                    <option value="login">Login Events</option>
-                    <option value="access">Record Access</option>
-                    <option value="modify">Record Modifications</option>
-                    <option value="admin">Administrative Actions</option>
+                    <option value="Login">Login Events</option>
+                    <option value="Logout">Logout Events</option>
+                    <option value="Record Access">Record Access</option>
+                    <option value="Record Upload">Record Upload</option>
+                    <option value="User Management">User Management</option>
+                    <option value="Permission Change">Permission Changes</option>
+                    <option value="Registration">User Registration</option>
                 </select>
                 <input type="date" id="dateFilter" placeholder="Filter by date">
                 <input type="text" id="userFilter" placeholder="Filter by user">
                 <button class="btn filter"><i class="fas fa-filter"></i> Apply Filters</button>
             </div>
-            
-            <div class="chart-placeholder">📊 User Activity Trends</div>
             
             <table role="grid">
                 <thead>
@@ -53,52 +114,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr tabindex="0">
-                        <td>2025-04-04 10:00:23</td>
-                        <td>John Smith</td>
-                        <td>Legal</td>
-                        <td>Record Access</td>
-                        <td>Viewed medical record MLC-001</td>
-                        <td>192.168.1.105</td>
-                    </tr>
-                    <tr tabindex="0">
-                        <td>2025-04-04 09:45:12</td>
-                        <td>Sarah Johnson</td>
-                        <td>Medical</td>
-                        <td>Record Upload</td>
-                        <td>Uploaded new medical document for patient P-2345</td>
-                        <td>192.168.1.87</td>
-                    </tr>
-                    <tr tabindex="0">
-                        <td>2025-04-04 09:30:45</td>
-                        <td>Admin User</td>
-                        <td>Admin</td>
-                        <td>User Management</td>
-                        <td>Created new user account for Dr. Williams</td>
-                        <td>192.168.1.10</td>
-                    </tr>
-                    <tr tabindex="0">
-                        <td>2025-04-04 09:15:33</td>
-                        <td>Michael Brown</td>
-                        <td>Patient</td>
-                        <td>Login</td>
-                        <td>Successful login</td>
-                        <td>192.168.1.201</td>
-                    </tr>
-                    <tr tabindex="0">
-                        <td>2025-04-04 08:55:17</td>
-                        <td>Lisa Davis</td>
-                        <td>Legal</td>
-                        <td>Permission Change</td>
-                        <td>Requested access to patient record P-3421</td>
-                        <td>192.168.1.156</td>
+                    <!-- Activity logs will be loaded here -->
+                    <tr>
+                        <td colspan="6">Loading activity logs...</td>
                     </tr>
                 </tbody>
             </table>
             
             <div class="pagination">
                 <button class="btn page-prev"><i class="fas fa-chevron-left"></i> Previous</button>
-                <span class="page-info">Page 1 of 10</span>
+                <span class="page-info">Page 1 of 1</span>
                 <button class="btn page-next">Next <i class="fas fa-chevron-right"></i></button>
             </div>
             
@@ -106,22 +131,6 @@
         </div>
     </section>
 
-    <script>
-        // JavaScript for log filtering and pagination would go here
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize log display
-            console.log('User activity logs loaded');
-            
-            // Filter button event listener
-            document.querySelector('.btn.filter').addEventListener('click', function() {
-                const logType = document.getElementById('logType').value;
-                const dateFilter = document.getElementById('dateFilter').value;
-                const userFilter = document.getElementById('userFilter').value;
-                
-                console.log(`Filtering logs: Type=${logType}, Date=${dateFilter}, User=${userFilter}`);
-                // In a real implementation, this would filter the table data
-            });
-        });
-    </script>
+    <script src="/js/admin-logs.js"></script>
 </body>
 </html>
